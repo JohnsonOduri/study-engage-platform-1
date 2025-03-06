@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -50,7 +49,14 @@ export const CourseManagement = () => {
         .eq('role', 'teacher');
         
       if (error) throw error;
-      return data as User[];
+      
+      return (data || []).map(profile => ({
+        id: profile.id,
+        name: profile.name,
+        email: profile.email || '',
+        role: profile.role as User['role'],
+        avatar: profile.avatar_url
+      })) as User[];
     }
   });
 

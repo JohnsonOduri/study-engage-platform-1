@@ -4,7 +4,7 @@ export type UserRole = "student" | "teacher" | "admin" | "moderator";
 export interface User {
   id: string;
   name: string;
-  email: string;
+  email?: string; // Make email optional to handle profiles without email
   role: UserRole;
   avatar?: string;
 }

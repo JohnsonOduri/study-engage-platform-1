@@ -3,7 +3,7 @@ import React from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { LineChart, BarChart, PieChart } from "@/components/ui/chart";
+import { LineChart, BarChart, PieChart } from "@/components/ui/recharts";
 import { Button } from "@/components/ui/button";
 import { Download, BarChart as BarChartIcon, PieChart as PieChartIcon, LineChart as LineChartIcon, Users, BookOpen, Clock, Download as DownloadIcon } from "lucide-react";
 
