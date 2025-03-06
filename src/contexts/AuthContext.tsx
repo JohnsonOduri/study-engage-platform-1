@@ -102,9 +102,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } catch (error: any) {
       console.error("Login error:", error);
       toast.error(error.message || "Failed to login");
+      setLoading(false); // Make sure loading is set to false on error
       throw error;
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -131,9 +130,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } catch (error: any) {
       console.error("Signup error:", error);
       toast.error(error.message || "Failed to create account");
+      setLoading(false); // Make sure loading is set to false on error
       throw error;
-    } finally {
-      setLoading(false);
     }
   };
 

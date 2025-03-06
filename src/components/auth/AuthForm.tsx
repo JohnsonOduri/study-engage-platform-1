@@ -23,6 +23,7 @@ export const AuthForm = () => {
     password: "",
     role: "student" as UserRole
   });
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -36,6 +37,10 @@ export const AuthForm = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    if (isSubmitting) return; // Prevent multiple submissions
+    
+    setIsSubmitting(true);
+    
     try {
       if (mode === "login") {
         await login(formData.email, formData.password);
@@ -43,6 +48,7 @@ export const AuthForm = () => {
       } else {
         if (!formData.name.trim()) {
           toast.error("Please enter your name");
+          setIsSubmitting(false);
           return;
         }
         await signup(formData.name, formData.email, formData.password, formData.role);
@@ -51,6 +57,9 @@ export const AuthForm = () => {
       }
     } catch (error) {
       console.error("Authentication error:", error);
+      // The loading state in AuthContext is already set to false in the catch block
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -141,9 +150,9 @@ export const AuthForm = () => {
         <Button
           type="submit"
           className="w-full h-10"
-          disabled={loading}
+          disabled={isSubmitting}
         >
-          {loading ? (
+          {isSubmitting ? (
             <Loader2 className="h-4 w-4 animate-spin mr-2" />
           ) : null}
           {mode === "login" ? "Sign In" : "Create Account"}
