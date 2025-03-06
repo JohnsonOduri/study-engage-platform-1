@@ -1,5 +1,5 @@
 
-import React from "react";
+import React, { useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
@@ -10,11 +10,23 @@ import {
   PieChart 
 } from "@/components/ui/recharts";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Trophy, Award, CheckCircle2, Clock, Calendar } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { 
+  Trophy, 
+  Award, 
+  CheckCircle2, 
+  Clock, 
+  Calendar, 
+  Target, 
+  Flame, 
+  TrendingUp,
+  BookOpen
+} from "lucide-react";
 
 export const MyProgress = () => {
   const { user } = useAuth();
   const [timeframe, setTimeframe] = React.useState("weekly");
+  const [selectedSkill, setSelectedSkill] = useState("Web Development");
 
   // Mock data for charts - restructured to match the expected format
   const activityData = {
@@ -50,6 +62,53 @@ export const MyProgress = () => {
         backgroundColor: ["#8b5cf6", "#a78bfa", "#c4b5fd", "#ddd6fe", "#ede9fe"]
       }
     ]
+  };
+
+  // New data for weekly goals
+  const weeklyGoals = [
+    { name: "Study Hours", current: 18, target: 25 },
+    { name: "Assignments", current: 7, target: 10 },
+    { name: "Quiz Score", current: 85, target: 90 },
+    { name: "Reading Pages", current: 120, target: 150 }
+  ];
+
+  // Skill proficiency data
+  const skillProficiencyData = {
+    "Web Development": {
+      skills: [
+        { name: "HTML/CSS", level: 85 },
+        { name: "JavaScript", level: 70 },
+        { name: "React", level: 60 },
+        { name: "Node.js", level: 45 },
+        { name: "Database", level: 55 }
+      ]
+    },
+    "Data Science": {
+      skills: [
+        { name: "Python", level: 75 },
+        { name: "Statistics", level: 60 },
+        { name: "Machine Learning", level: 40 },
+        { name: "Data Visualization", level: 65 },
+        { name: "SQL", level: 70 }
+      ]
+    },
+    "UI/UX Design": {
+      skills: [
+        { name: "Wireframing", level: 80 },
+        { name: "Prototyping", level: 65 },
+        { name: "User Research", level: 55 },
+        { name: "Visual Design", level: 70 },
+        { name: "Design Systems", level: 50 }
+      ]
+    }
+  };
+
+  // Learning streak data
+  const streakData = {
+    currentStreak: 12,
+    longestStreak: 21,
+    thisWeek: 5,
+    lastActivity: "Today"
   };
 
   return (
@@ -89,6 +148,76 @@ export const MyProgress = () => {
         />
       </div>
 
+      {/* New Learning Streak Card */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg">Learning Streak</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+            <div className="flex flex-col items-center justify-center space-y-2">
+              <div className="bg-primary/20 rounded-full p-3">
+                <Flame className="h-8 w-8 text-primary" />
+              </div>
+              <p className="text-3xl font-bold">{streakData.currentStreak}</p>
+              <p className="text-sm text-muted-foreground">Current Streak</p>
+            </div>
+            <div className="flex flex-col items-center justify-center space-y-2">
+              <div className="bg-primary/20 rounded-full p-3">
+                <TrendingUp className="h-8 w-8 text-primary" />
+              </div>
+              <p className="text-3xl font-bold">{streakData.longestStreak}</p>
+              <p className="text-sm text-muted-foreground">Longest Streak</p>
+            </div>
+            <div className="flex flex-col items-center justify-center space-y-2">
+              <div className="bg-primary/20 rounded-full p-3">
+                <Calendar className="h-8 w-8 text-primary" />
+              </div>
+              <p className="text-3xl font-bold">{streakData.thisWeek}</p>
+              <p className="text-sm text-muted-foreground">Days this week</p>
+            </div>
+            <div className="flex flex-col items-center justify-center space-y-2">
+              <div className="bg-primary/20 rounded-full p-3">
+                <BookOpen className="h-8 w-8 text-primary" />
+              </div>
+              <p className="text-3xl font-bold">{streakData.lastActivity}</p>
+              <p className="text-sm text-muted-foreground">Last Activity</p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* New Weekly Goals Card */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg">Weekly Goals</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            {weeklyGoals.map((goal, index) => (
+              <div key={index} className="space-y-1">
+                <div className="flex justify-between items-center">
+                  <p className="font-medium">{goal.name}</p>
+                  <p className="text-sm">
+                    {goal.current}/{goal.target} 
+                    <span className="text-muted-foreground ml-1">
+                      ({Math.round((goal.current / goal.target) * 100)}%)
+                    </span>
+                  </p>
+                </div>
+                <Progress value={(goal.current / goal.target) * 100} className="h-2" />
+              </div>
+            ))}
+            <div className="flex justify-end mt-4">
+              <Button variant="outline" size="sm" className="flex items-center gap-2">
+                <Target className="h-4 w-4" />
+                Set New Goals
+              </Button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card>
           <CardHeader>
@@ -114,6 +243,48 @@ export const MyProgress = () => {
           </CardContent>
         </Card>
       </div>
+
+      {/* Skill Proficiency Chart */}
+      <Card>
+        <CardHeader>
+          <div className="flex justify-between items-center">
+            <CardTitle className="text-lg">Skill Proficiency</CardTitle>
+            <Tabs value={selectedSkill} onValueChange={setSelectedSkill}>
+              <TabsList>
+                {Object.keys(skillProficiencyData).map((skill) => (
+                  <TabsTrigger key={skill} value={skill}>
+                    {skill}
+                  </TabsTrigger>
+                ))}
+              </TabsList>
+            </Tabs>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            {skillProficiencyData[selectedSkill].skills.map((skill, i) => (
+              <div key={i} className="space-y-1">
+                <div className="flex justify-between items-center">
+                  <p className="font-medium">{skill.name}</p>
+                  <div className="flex items-center gap-2">
+                    <Badge variant={
+                      skill.level < 40 ? "destructive" : 
+                      skill.level < 70 ? "secondary" : 
+                      "default"
+                    }>
+                      {skill.level < 40 ? "Beginner" : 
+                       skill.level < 70 ? "Intermediate" : 
+                       "Advanced"}
+                    </Badge>
+                    <span>{skill.level}%</span>
+                  </div>
+                </div>
+                <Progress value={skill.level} className="h-2" />
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <Card className="lg:col-span-1">
