@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -53,9 +54,9 @@ export const CourseManagement = () => {
       return (data || []).map(profile => ({
         id: profile.id,
         name: profile.name,
-        email: profile.email || '',
         role: profile.role as User['role'],
         avatar: profile.avatar_url
+        // Note: We're not trying to access email anymore since it doesn't exist in the profiles table
       })) as User[];
     }
   });
@@ -445,3 +446,4 @@ export const CourseManagement = () => {
     </div>
   );
 };
+
