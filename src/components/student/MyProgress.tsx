@@ -16,32 +16,41 @@ export const MyProgress = () => {
   const { user } = useAuth();
   const [timeframe, setTimeframe] = React.useState("weekly");
 
-  // Mock data for charts
-  const activityData = [
-    { name: "Mon", value: 2.4 },
-    { name: "Tue", value: 1.3 },
-    { name: "Wed", value: 3.2 },
-    { name: "Thu", value: 5.2 },
-    { name: "Fri", value: 3.5 },
-    { name: "Sat", value: 2.3 },
-    { name: "Sun", value: 1.5 },
-  ];
+  // Mock data for charts - restructured to match the expected format
+  const activityData = {
+    labels: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
+    datasets: [
+      {
+        label: "Hours Spent",
+        data: [2.4, 1.3, 3.2, 5.2, 3.5, 2.3, 1.5],
+        borderColor: "#8b5cf6",
+        backgroundColor: "rgba(139, 92, 246, 0.2)",
+        fill: true
+      }
+    ]
+  };
 
-  const courseProgressData = [
-    { name: "Web Dev", value: 75 },
-    { name: "Python", value: 45 },
-    { name: "Database", value: 90 },
-    { name: "UI/UX", value: 30 },
-    { name: "Mobile App", value: 60 },
-  ];
+  const courseProgressData = {
+    labels: ["Web Dev", "Python", "Database", "UI/UX", "Mobile App"],
+    datasets: [
+      {
+        label: "Completion",
+        data: [75, 45, 90, 30, 60],
+        backgroundColor: "#8b5cf6"
+      }
+    ]
+  };
 
-  const timeDistributionData = [
-    { name: "Watching Videos", value: 35 },
-    { name: "Reading Materials", value: 25 },
-    { name: "Assignments", value: 20 },
-    { name: "Quizzes", value: 15 },
-    { name: "Forums", value: 5 },
-  ];
+  const timeDistributionData = {
+    labels: ["Watching Videos", "Reading Materials", "Assignments", "Quizzes", "Forums"],
+    datasets: [
+      {
+        label: "Time Spent",
+        data: [35, 25, 20, 15, 5],
+        backgroundColor: ["#8b5cf6", "#a78bfa", "#c4b5fd", "#ddd6fe", "#ede9fe"]
+      }
+    ]
+  };
 
   return (
     <div className="space-y-6">
@@ -87,17 +96,8 @@ export const MyProgress = () => {
           </CardHeader>
           <CardContent>
             <LineChart 
-              data={activityData} 
-              xAxisKey="name" 
-              yAxisKey="value"
-              strokeColor="#8b5cf6"
-              gradientFrom="rgba(139, 92, 246, 0.2)"
-              gradientTo="rgba(139, 92, 246, 0)"
+              data={activityData}
               height={250}
-              ticks={[0, 1, 2, 3, 4, 5, 6]}
-              tickFormatter={(value) => `${value}h`}
-              tooltipFormatter={(value) => `${value} hours`}
-              yAxisLabel="Hours"
             />
           </CardContent>
         </Card>
@@ -108,15 +108,8 @@ export const MyProgress = () => {
           </CardHeader>
           <CardContent>
             <BarChart 
-              data={courseProgressData} 
-              xAxisKey="name" 
-              yAxisKey="value"
-              color="#8b5cf6"
+              data={courseProgressData}
               height={250}
-              ticks={[0, 25, 50, 75, 100]}
-              tickFormatter={(value) => `${value}%`}
-              tooltipFormatter={(value) => `${value}%`}
-              yAxisLabel="Completion"
             />
           </CardContent>
         </Card>
@@ -130,10 +123,7 @@ export const MyProgress = () => {
           <CardContent>
             <div className="flex justify-center">
               <PieChart 
-                data={timeDistributionData} 
-                nameKey="name" 
-                dataKey="value"
-                colors={["#8b5cf6", "#a78bfa", "#c4b5fd", "#ddd6fe", "#ede9fe"]}
+                data={timeDistributionData}
                 height={250}
               />
             </div>
