@@ -86,9 +86,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const login = async (email: string, password: string) => {
-    setLoading(true);
-    
     try {
+      setLoading(true);
+      
       const { error } = await supabase.auth.signInWithPassword({
         email,
         password,
@@ -99,18 +99,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
       
       toast.success("Login successful");
+      return Promise.resolve();
     } catch (error: any) {
       console.error("Login error:", error);
       toast.error(error.message || "Failed to login");
-      setLoading(false); // Make sure loading is set to false on error
-      throw error;
+      setLoading(false);
+      return Promise.reject(error);
     }
   };
 
   const signup = async (name: string, email: string, password: string, role: UserRole) => {
-    setLoading(true);
-    
     try {
+      setLoading(true);
+      
       const { error } = await supabase.auth.signUp({
         email,
         password,
@@ -127,16 +128,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
       
       toast.success("Account created successfully. Please check your email for verification.");
+      return Promise.resolve();
     } catch (error: any) {
       console.error("Signup error:", error);
       toast.error(error.message || "Failed to create account");
-      setLoading(false); // Make sure loading is set to false on error
-      throw error;
+      setLoading(false);
+      return Promise.reject(error);
     }
   };
 
   const logout = async () => {
     try {
+      setLoading(true);
       const { error } = await supabase.auth.signOut();
       
       if (error) {
@@ -148,6 +151,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } catch (error: any) {
       console.error("Logout error:", error);
       toast.error(error.message || "Failed to logout");
+    } finally {
+      setLoading(false);
     }
   };
 

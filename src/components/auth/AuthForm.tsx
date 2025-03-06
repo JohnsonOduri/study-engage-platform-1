@@ -1,5 +1,5 @@
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
@@ -14,7 +14,7 @@ type AuthMode = "login" | "signup";
 
 export const AuthForm = () => {
   const navigate = useNavigate();
-  const { login, signup, loading } = useAuth();
+  const { login, signup, loading, isAuthenticated } = useAuth();
   
   const [mode, setMode] = useState<AuthMode>("login");
   const [formData, setFormData] = useState({
@@ -24,6 +24,13 @@ export const AuthForm = () => {
     role: "student" as UserRole
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Redirect if already authenticated
+  useEffect(() => {
+    if (isAuthenticated) {
+      navigate("/dashboard");
+    }
+  }, [isAuthenticated, navigate]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -44,7 +51,7 @@ export const AuthForm = () => {
     try {
       if (mode === "login") {
         await login(formData.email, formData.password);
-        navigate("/dashboard");
+        // The navigation will happen via the useEffect hook when isAuthenticated becomes true
       } else {
         if (!formData.name.trim()) {
           toast.error("Please enter your name");
@@ -52,12 +59,11 @@ export const AuthForm = () => {
           return;
         }
         await signup(formData.name, formData.email, formData.password, formData.role);
-        toast.success("Account created! Redirecting to dashboard...");
-        navigate("/dashboard");
+        // For signup, we wait for the auth state to update which will then trigger navigation
       }
     } catch (error) {
       console.error("Authentication error:", error);
-      // The loading state in AuthContext is already set to false in the catch block
+      // Error is already handled in the AuthContext (with toast)
     } finally {
       setIsSubmitting(false);
     }
@@ -150,9 +156,9 @@ export const AuthForm = () => {
         <Button
           type="submit"
           className="w-full h-10"
-          disabled={isSubmitting}
+          disabled={isSubmitting || loading}
         >
-          {isSubmitting ? (
+          {(isSubmitting || loading) ? (
             <Loader2 className="h-4 w-4 animate-spin mr-2" />
           ) : null}
           {mode === "login" ? "Sign In" : "Create Account"}
