@@ -1,13 +1,17 @@
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { Progress } from "@/components/ui/progress";
 import { Bot, AlertTriangle, FileText, Upload, RotateCw, CheckCircle, Copy } from "lucide-react";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
+import { AIContentCheck } from "@/lib/types";
 
 export const AiChecker = () => {
+  const { user, isAuthenticated } = useAuth();
   const [text, setText] = useState("");
   const [result, setResult] = useState<null | {
     aiProbability: number;
@@ -15,6 +19,34 @@ export const AiChecker = () => {
     analysis: string[];
   }>(null);
   const [isChecking, setIsChecking] = useState(false);
+  const [hasOpenAIKey, setHasOpenAIKey] = useState(false);
+
+  // Check if user has OpenAI API key
+  useEffect(() => {
+    if (isAuthenticated && user) {
+      checkForOpenAIKey();
+    }
+  }, [isAuthenticated, user]);
+
+  const checkForOpenAIKey = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('api_keys')
+        .select('id')
+        .eq('user_id', user?.id)
+        .eq('service_name', 'openai')
+        .maybeSingle();
+
+      if (error) {
+        console.error("Error checking for OpenAI key:", error);
+        return;
+      }
+
+      setHasOpenAIKey(!!data);
+    } catch (error) {
+      console.error("Error in API key check:", error);
+    }
+  };
 
   const handleCheck = async () => {
     if (!text.trim()) {
@@ -22,31 +54,66 @@ export const AiChecker = () => {
       return;
     }
 
+    if (!isAuthenticated) {
+      toast.error("Please login to use this feature");
+      return;
+    }
+
+    if (!hasOpenAIKey) {
+      toast.error("Please add your OpenAI API key in the API Key Manager");
+      return;
+    }
+
     setIsChecking(true);
 
     try {
-      // Simulating API call to AI detection service
-      // In a real implementation, this would be an API call to a service like GPTZero, Originality.ai, etc.
-      setTimeout(() => {
+      // In a real implementation, we would call our Supabase Edge Function 
+      // that would use the stored OpenAI API key to analyze the text
+      // For now, we'll simulate this with a timeout and random data
+
+      setTimeout(async () => {
         // Mock response
         const aiScore = Math.random() * 100;
         const plagScore = Math.random() * 100;
         
-        setResult({
+        const analysis = [
+          aiScore > 70 ? 
+            "This text shows strong indicators of AI generation." : 
+            "This text appears to be primarily human-written.",
+          plagScore > 30 ?
+            "Multiple sections appear to be copied from existing sources." :
+            "No significant matching content was found in our database.",
+          "Sentence structures exhibit " + (aiScore > 70 ? "high" : "low") + " uniformity.",
+          "Vocabulary diversity is " + (aiScore > 70 ? "limited" : "natural") + ".",
+          "Transitional phrases are " + (aiScore > 70 ? "repetitive" : "varied") + "."
+        ];
+        
+        const resultData = {
           aiProbability: aiScore,
           plagiarismScore: plagScore,
-          analysis: [
-            aiScore > 70 ? 
-              "This text shows strong indicators of AI generation." : 
-              "This text appears to be primarily human-written.",
-            plagScore > 30 ?
-              "Multiple sections appear to be copied from existing sources." :
-              "No significant matching content was found in our database.",
-            "Sentence structures exhibit " + (aiScore > 70 ? "high" : "low") + " uniformity.",
-            "Vocabulary diversity is " + (aiScore > 70 ? "limited" : "natural") + ".",
-            "Transitional phrases are " + (aiScore > 70 ? "repetitive" : "varied") + "."
-          ]
-        });
+          analysis: analysis
+        };
+        
+        setResult(resultData);
+        
+        // Store the check result in Supabase
+        try {
+          const { error } = await supabase
+            .from('ai_content_checks')
+            .insert({
+              user_id: user?.id,
+              text_content: text,
+              ai_probability: aiScore,
+              plagiarism_score: plagScore,
+              analysis_results: analysis
+            });
+            
+          if (error) {
+            console.error("Error saving check result:", error);
+          }
+        } catch (err) {
+          console.error("Error in storing check result:", err);
+        }
         
         setIsChecking(false);
       }, 2000);
@@ -97,6 +164,38 @@ ${text}
         </p>
       </div>
 
+      {!isAuthenticated && (
+        <Card className="border-amber-200 bg-amber-50">
+          <CardContent className="pt-6">
+            <div className="flex items-start gap-2">
+              <AlertTriangle className="h-5 w-5 text-amber-500 flex-shrink-0 mt-0.5" />
+              <div>
+                <h3 className="font-medium text-amber-800">Authentication Required</h3>
+                <p className="text-sm text-amber-700">
+                  Please login to use the AI Content Checker feature.
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {isAuthenticated && !hasOpenAIKey && (
+        <Card className="border-amber-200 bg-amber-50">
+          <CardContent className="pt-6">
+            <div className="flex items-start gap-2">
+              <AlertTriangle className="h-5 w-5 text-amber-500 flex-shrink-0 mt-0.5" />
+              <div>
+                <h3 className="font-medium text-amber-800">OpenAI API Key Required</h3>
+                <p className="text-sm text-amber-700">
+                  Please add your OpenAI API key in the API Key Manager to use this feature.
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card>
           <CardHeader>
@@ -120,7 +219,10 @@ ${text}
             <Button variant="outline" onClick={() => setText("")}>
               Clear
             </Button>
-            <Button onClick={handleCheck} disabled={isChecking || !text.trim()}>
+            <Button 
+              onClick={handleCheck} 
+              disabled={isChecking || !text.trim() || !isAuthenticated || !hasOpenAIKey}
+            >
               {isChecking ? (
                 <>
                   <RotateCw className="h-4 w-4 mr-2 animate-spin" />

@@ -9,6 +9,63 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      ai_content_checks: {
+        Row: {
+          ai_probability: number
+          analysis_results: string[]
+          created_at: string | null
+          id: string
+          plagiarism_score: number
+          text_content: string
+          user_id: string
+        }
+        Insert: {
+          ai_probability: number
+          analysis_results: string[]
+          created_at?: string | null
+          id?: string
+          plagiarism_score: number
+          text_content: string
+          user_id: string
+        }
+        Update: {
+          ai_probability?: number
+          analysis_results?: string[]
+          created_at?: string | null
+          id?: string
+          plagiarism_score?: number
+          text_content?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      api_keys: {
+        Row: {
+          api_key: string
+          created_at: string | null
+          id: string
+          service_name: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          api_key: string
+          created_at?: string | null
+          id?: string
+          service_name: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          api_key?: string
+          created_at?: string | null
+          id?: string
+          service_name?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       assignments: {
         Row: {
           course_id: string | null

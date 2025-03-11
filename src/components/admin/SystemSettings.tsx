@@ -4,7 +4,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { Settings, Lock, Bell, Users, Database, CloudUpload } from "lucide-react";
+import { Settings, Lock, Bell, Users, Database, CloudUpload, Key } from "lucide-react";
+import { ApiKeyManager } from "./ApiKeyManager";
 
 export const SystemSettings = () => {
   return (
@@ -15,6 +16,9 @@ export const SystemSettings = () => {
           Configure authentication, security, and system preferences
         </p>
       </div>
+
+      {/* API Key Manager */}
+      <ApiKeyManager />
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <Card>
