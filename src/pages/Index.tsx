@@ -4,12 +4,13 @@ import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
-import { BookOpen, Laptop, Users, Clock, MessageSquare, ChevronRight } from "lucide-react";
+import { BookOpen, Laptop, Users, Clock, MessageSquare, ChevronRight, Sparkles, Heart, Star, Rocket } from "lucide-react";
 
 const Index = () => {
   const imageRef = useRef<HTMLDivElement>(null);
+  const featureRefs = useRef<(HTMLDivElement | null)[]>([]);
 
-  // Animation effect for the image
+  // Animation effect for elements
   useEffect(() => {
     const observer = new IntersectionObserver(
       (entries) => {
@@ -26,43 +27,60 @@ const Index = () => {
       observer.observe(imageRef.current);
     }
 
+    featureRefs.current.forEach(ref => {
+      if (ref) observer.observe(ref);
+    });
+
     return () => {
       if (imageRef.current) {
         observer.unobserve(imageRef.current);
       }
+      featureRefs.current.forEach(ref => {
+        if (ref) observer.unobserve(ref);
+      });
     };
   }, []);
 
   return (
-    <div className="flex flex-col min-h-screen">
+    <div className="flex flex-col min-h-screen overflow-hidden bg-gradient-to-b from-blue-50 to-indigo-50">
       <Header />
       <main className="flex-1">
         {/* Hero Section with Enhanced Visuals */}
         <section className="w-full py-12 md:py-24 lg:py-32 xl:py-48 relative overflow-hidden">
-          <div className="absolute inset-0 bg-gradient-to-r from-blue-500/10 to-teal-500/10 z-0"></div>
-          <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1488590528505-98d2b5aba04b')] bg-cover bg-center opacity-5 z-0"></div>
+          {/* Decorative elements */}
+          <div className="absolute top-40 left-10 w-20 h-20 rounded-full bg-pink-200 opacity-70 animate-float" style={{ animationDelay: "0.3s" }}></div>
+          <div className="absolute top-80 right-20 w-16 h-16 rounded-full bg-yellow-200 opacity-70 animate-float" style={{ animationDelay: "1.2s" }}></div>
+          <div className="absolute bottom-20 left-1/4 w-24 h-24 rounded-full bg-green-200 opacity-60 animate-float" style={{ animationDelay: "0.8s" }}></div>
+          <div className="absolute top-1/4 right-1/3 w-12 h-12 rounded-full bg-purple-200 opacity-60 animate-float" style={{ animationDelay: "1.5s" }}></div>
+          
           <div className="container px-4 md:px-6 relative z-10">
             <div className="grid gap-6 lg:grid-cols-2 lg:gap-12 xl:gap-16">
               <div className="flex flex-col justify-center space-y-4">
                 <div className="space-y-2">
-                  <h1 className="text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl lg:text-6xl/none animate-slideDown">
-                    Learning Made Simple, <span className="text-primary relative">
-                      Together
-                      <span className="absolute bottom-0 left-0 w-full h-1 bg-primary transform origin-left animate-expandWidth"></span>
+                  <div className="flex items-center mb-2">
+                    <Sparkles className="h-6 w-6 mr-2 text-amber-500 animate-pulse" />
+                    <span className="bg-gradient-to-r from-amber-400 to-pink-500 text-transparent bg-clip-text font-bold">
+                      The Future of Learning
                     </span>
+                  </div>
+                  <h1 className="text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl lg:text-6xl/none animate-slideDown">
+                    Learning Made <span className="text-primary relative">
+                      Playful
+                      <span className="absolute bottom-1 left-0 w-full h-1 bg-gradient-to-r from-pink-500 to-purple-500 transform origin-left animate-expandWidth"></span>
+                    </span> & Fun
                   </h1>
                   <p className="max-w-[600px] text-muted-foreground md:text-xl animate-slideDown" style={{ animationDelay: "0.1s" }}>
-                    Connect, collaborate, and excel with our comprehensive learning management system for students and teachers.
+                    Connect, collaborate, and excel with our colorful learning management system that makes education an adventure!
                   </p>
                 </div>
                 <div className="flex flex-col gap-2 min-[400px]:flex-row animate-slideDown" style={{ animationDelay: "0.2s" }}>
-                  <Button asChild size="lg" className="gap-1 group">
+                  <Button asChild size="lg" className="gap-1 group bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 shadow-lg hover:shadow-xl transition-all duration-300">
                     <Link to="/login">
                       Get Started
                       <ChevronRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
                     </Link>
                   </Button>
-                  <Button asChild variant="outline" size="lg">
+                  <Button asChild variant="outline" size="lg" className="border-2 border-indigo-200 hover:border-indigo-300 shadow-md hover:shadow-lg">
                     <Link to="/about">
                       Learn More
                     </Link>
@@ -75,31 +93,29 @@ const Index = () => {
                   className="relative transition-all duration-700 opacity-0"
                 >
                   {/* Decorative elements */}
-                  <div className="absolute -inset-0.5 bg-gradient-to-r from-primary to-blue-600 rounded-xl blur-xl opacity-50 animate-pulse"></div>
-                  <div className="absolute -inset-1 bg-gradient-to-r from-blue-600 to-teal-400 rounded-xl blur-xl opacity-30 animate-pulse" style={{ animationDelay: "0.5s" }}></div>
-                  <div className="absolute -inset-1.5 bg-gradient-to-r from-teal-400 to-primary rounded-xl blur-xl opacity-20 animate-pulse" style={{ animationDelay: "1s" }}></div>
+                  <div className="absolute -inset-0.5 bg-gradient-to-r from-pink-400 to-purple-600 rounded-xl blur-xl opacity-50 animate-pulse"></div>
+                  <div className="absolute -inset-1 bg-gradient-to-r from-blue-400 to-teal-400 rounded-xl blur-xl opacity-30 animate-pulse" style={{ animationDelay: "0.5s" }}></div>
+                  <div className="absolute -inset-1.5 bg-gradient-to-r from-yellow-300 to-pink-400 rounded-xl blur-xl opacity-20 animate-pulse" style={{ animationDelay: "1s" }}></div>
                   
                   {/* Main image */}
-                  <div className="relative overflow-hidden rounded-xl shadow-2xl border border-white/10 bg-card">
-                    <div className="absolute inset-0 bg-gradient-to-tr from-slate-900/80 to-slate-800/80 z-10 mix-blend-overlay"></div>
+                  <div className="relative overflow-hidden rounded-2xl shadow-2xl border-4 border-white bg-white transform rotate-1">
+                    <div className="absolute inset-0 bg-gradient-to-tr from-indigo-900/30 to-purple-800/30 z-10 mix-blend-overlay"></div>
                     <img
-                      src="https://images.unsplash.com/photo-1486312338219-ce68d2c6f44d"
-                      alt="Professional workspace with computer"
+                      src="https://images.unsplash.com/photo-1485827404703-89b55fcc595e"
+                      alt="Cute robot learning companion"
                       className="w-full h-[400px] object-cover object-center transform transition-transform hover:scale-105 duration-700"
                     />
                     
                     {/* Overlay elements */}
-                    <div className="absolute top-4 right-4 h-12 w-12 rounded-full bg-white/10 backdrop-blur-md flex items-center justify-center z-20 animate-float">
-                      <BookOpen className="h-6 w-6 text-white/90" />
+                    <div className="absolute top-4 right-4 h-14 w-14 rounded-full bg-white/90 backdrop-blur-md flex items-center justify-center z-20 animate-float border-2 border-pink-200">
+                      <BookOpen className="h-7 w-7 text-pink-500" />
                     </div>
-                    <div className="absolute bottom-4 left-4 h-12 w-12 rounded-full bg-white/10 backdrop-blur-md flex items-center justify-center z-20 animate-float" style={{ animationDelay: "0.3s" }}>
-                      <Laptop className="h-6 w-6 text-white/90" />
+                    <div className="absolute bottom-4 left-4 h-14 w-14 rounded-full bg-white/90 backdrop-blur-md flex items-center justify-center z-20 animate-float border-2 border-indigo-200" style={{ animationDelay: "0.3s" }}>
+                      <Laptop className="h-7 w-7 text-indigo-500" />
                     </div>
-                    <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 h-20 w-20 rounded-full bg-primary/20 backdrop-blur-md flex items-center justify-center z-20 border border-primary/30 animate-pulse">
-                      <div className="h-16 w-16 rounded-full bg-primary/30 flex items-center justify-center">
-                        <div className="h-10 w-10 rounded-full bg-primary flex items-center justify-center text-white font-bold">
-                          LMS
-                        </div>
+                    <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 h-24 w-24 rounded-full bg-white/90 backdrop-blur-md flex items-center justify-center z-20 border-4 border-purple-300 animate-pulse shadow-xl">
+                      <div className="h-20 w-20 rounded-full bg-gradient-to-br from-indigo-400 to-purple-500 flex items-center justify-center">
+                        <Star className="h-10 w-10 text-white animate-pulse" />
                       </div>
                     </div>
                   </div>
@@ -110,14 +126,19 @@ const Index = () => {
         </section>
 
         {/* Features Section */}
-        <section className="w-full py-12 md:py-24 lg:py-32 bg-muted">
-          <div className="container px-4 md:px-6">
+        <section className="w-full py-12 md:py-24 lg:py-32 bg-white relative overflow-hidden">
+          {/* Decorative shapes */}
+          <div className="absolute top-0 right-0 w-64 h-64 bg-purple-100 rounded-full -translate-y-1/2 translate-x-1/4"></div>
+          <div className="absolute bottom-0 left-0 w-64 h-64 bg-indigo-100 rounded-full translate-y-1/2 -translate-x-1/4"></div>
+          
+          <div className="container px-4 md:px-6 relative z-10">
             <div className="flex flex-col items-center justify-center space-y-4 text-center">
+              <div className="inline-flex items-center px-3 py-1 rounded-full bg-indigo-100 text-indigo-600 mb-4">
+                <Sparkles className="h-4 w-4 mr-2 animate-pulse" />
+                <span className="text-sm font-medium">Magical Features</span>
+              </div>
               <div className="space-y-2">
-                <div className="inline-block rounded-lg bg-muted px-3 py-1 text-sm">
-                  Key Features
-                </div>
-                <h2 className="text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl">
+                <h2 className="text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl bg-gradient-to-r from-indigo-600 via-purple-500 to-pink-500 bg-clip-text text-transparent">
                   Everything You Need for Education
                 </h2>
                 <p className="max-w-[900px] text-muted-foreground md:text-xl/relaxed lg:text-base/relaxed xl:text-xl/relaxed">
@@ -125,37 +146,49 @@ const Index = () => {
                 </p>
               </div>
             </div>
-            <div className="mx-auto grid max-w-5xl grid-cols-1 gap-6 py-12 md:grid-cols-2 lg:grid-cols-4">
-              <div className="flex flex-col items-center space-y-4 rounded-lg border border-border p-6 shadow-subtle transition-all hover:shadow-elevated">
-                <div className="flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
-                  <BookOpen className="h-8 w-8 text-primary" />
+            <div className="mx-auto grid max-w-5xl grid-cols-1 gap-8 py-12 md:grid-cols-2 lg:grid-cols-4">
+              <div 
+                ref={el => featureRefs.current[0] = el}
+                className="opacity-0 flex flex-col items-center space-y-4 rounded-2xl border-2 border-indigo-100 p-6 shadow-subtle transition-all hover:shadow-elevated hover:border-indigo-200 hover:-translate-y-1 duration-300 bg-white"
+              >
+                <div className="flex h-16 w-16 items-center justify-center rounded-full bg-pink-100">
+                  <BookOpen className="h-8 w-8 text-pink-500" />
                 </div>
                 <h3 className="text-xl font-bold">Course Management</h3>
                 <p className="text-center text-muted-foreground">
                   Access and manage course materials, assignments, and schedules.
                 </p>
               </div>
-              <div className="flex flex-col items-center space-y-4 rounded-lg border border-border p-6 shadow-subtle transition-all hover:shadow-elevated">
-                <div className="flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
-                  <Clock className="h-8 w-8 text-primary" />
+              <div 
+                ref={el => featureRefs.current[1] = el}
+                className="opacity-0 flex flex-col items-center space-y-4 rounded-2xl border-2 border-indigo-100 p-6 shadow-subtle transition-all hover:shadow-elevated hover:border-indigo-200 hover:-translate-y-1 duration-300 bg-white"
+              >
+                <div className="flex h-16 w-16 items-center justify-center rounded-full bg-amber-100">
+                  <Clock className="h-8 w-8 text-amber-500" />
                 </div>
                 <h3 className="text-xl font-bold">Attendance Tracking</h3>
                 <p className="text-center text-muted-foreground">
                   Easily track and manage attendance records with detailed analytics.
                 </p>
               </div>
-              <div className="flex flex-col items-center space-y-4 rounded-lg border border-border p-6 shadow-subtle transition-all hover:shadow-elevated">
-                <div className="flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
-                  <Laptop className="h-8 w-8 text-primary" />
+              <div 
+                ref={el => featureRefs.current[2] = el}
+                className="opacity-0 flex flex-col items-center space-y-4 rounded-2xl border-2 border-indigo-100 p-6 shadow-subtle transition-all hover:shadow-elevated hover:border-indigo-200 hover:-translate-y-1 duration-300 bg-white"
+              >
+                <div className="flex h-16 w-16 items-center justify-center rounded-full bg-indigo-100">
+                  <Laptop className="h-8 w-8 text-indigo-500" />
                 </div>
                 <h3 className="text-xl font-bold">Online Learning</h3>
                 <p className="text-center text-muted-foreground">
                   Access study materials, quizzes, and assignments from anywhere.
                 </p>
               </div>
-              <div className="flex flex-col items-center space-y-4 rounded-lg border border-border p-6 shadow-subtle transition-all hover:shadow-elevated">
-                <div className="flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
-                  <MessageSquare className="h-8 w-8 text-primary" />
+              <div 
+                ref={el => featureRefs.current[3] = el}
+                className="opacity-0 flex flex-col items-center space-y-4 rounded-2xl border-2 border-indigo-100 p-6 shadow-subtle transition-all hover:shadow-elevated hover:border-indigo-200 hover:-translate-y-1 duration-300 bg-white"
+              >
+                <div className="flex h-16 w-16 items-center justify-center rounded-full bg-teal-100">
+                  <MessageSquare className="h-8 w-8 text-teal-500" />
                 </div>
                 <h3 className="text-xl font-bold">Communication</h3>
                 <p className="text-center text-muted-foreground">
@@ -167,32 +200,39 @@ const Index = () => {
         </section>
 
         {/* CTA Section */}
-        <section className="w-full py-12 md:py-24 lg:py-32 border-t">
-          <div className="container px-4 md:px-6">
+        <section className="w-full py-12 md:py-24 lg:py-32 bg-gradient-to-b from-indigo-50 to-white relative overflow-hidden">
+          {/* Decorative elements */}
+          <div className="absolute top-0 left-0 w-full h-24 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxwYXRoIGQ9Ik0wIDI1QzUwIDUwIDUwIDc1IDEwMCA1MFYwSDBWMjVaIiBmaWxsPSIjZWVmMmZmIi8+PC9zdmc+')] bg-repeat-x"></div>
+          
+          <div className="container px-4 md:px-6 relative z-10">
             <div className="grid gap-6 lg:grid-cols-2 lg:gap-12">
               <div className="flex flex-col justify-center space-y-4">
+                <div className="inline-flex items-center px-3 py-1 rounded-full bg-pink-100 text-pink-600 mb-4 w-fit">
+                  <Heart className="h-4 w-4 mr-2 animate-pulse" />
+                  <span className="text-sm font-medium">Join Our Community</span>
+                </div>
                 <div className="space-y-2">
-                  <div className="inline-block rounded-lg bg-primary/10 px-3 py-1 text-sm text-primary">
-                    Get Started Today
-                  </div>
                   <h2 className="text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl">
-                    Join Our Educational Community
+                    Join Our Educational <span className="text-primary">Adventure</span>
                   </h2>
                   <p className="max-w-[600px] text-muted-foreground md:text-xl/relaxed lg:text-base/relaxed xl:text-xl/relaxed">
                     EduConnect helps students and teachers collaborate effectively. Sign up now and transform your educational experience.
                   </p>
                 </div>
                 <div className="flex flex-col gap-2 min-[400px]:flex-row">
-                  <Button asChild size="lg">
-                    <Link to="/login">Sign Up Now</Link>
+                  <Button asChild size="lg" className="gap-1 group bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 shadow-lg hover:shadow-xl transition-all duration-300">
+                    <Link to="/login">
+                      Sign Up Now
+                      <Rocket className="h-4 w-4 ml-1 transition-transform group-hover:translate-x-1" />
+                    </Link>
                   </Button>
                 </div>
               </div>
               <div className="flex items-center justify-center">
-                <div className="space-y-4">
+                <div className="space-y-6 bg-white p-8 rounded-2xl shadow-lg border-2 border-indigo-100">
                   <div className="flex items-center gap-4">
-                    <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
-                      <Users className="h-6 w-6 text-primary" />
+                    <div className="flex h-14 w-14 items-center justify-center rounded-full bg-indigo-100">
+                      <Users className="h-7 w-7 text-indigo-500" />
                     </div>
                     <div className="space-y-1">
                       <h3 className="text-xl font-bold">For Students & Teachers</h3>
@@ -202,8 +242,8 @@ const Index = () => {
                     </div>
                   </div>
                   <div className="flex items-center gap-4">
-                    <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
-                      <Laptop className="h-6 w-6 text-primary" />
+                    <div className="flex h-14 w-14 items-center justify-center rounded-full bg-pink-100">
+                      <Laptop className="h-7 w-7 text-pink-500" />
                     </div>
                     <div className="space-y-1">
                       <h3 className="text-xl font-bold">Accessible Anywhere</h3>
@@ -213,8 +253,8 @@ const Index = () => {
                     </div>
                   </div>
                   <div className="flex items-center gap-4">
-                    <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
-                      <BookOpen className="h-6 w-6 text-primary" />
+                    <div className="flex h-14 w-14 items-center justify-center rounded-full bg-amber-100">
+                      <BookOpen className="h-7 w-7 text-amber-500" />
                     </div>
                     <div className="space-y-1">
                       <h3 className="text-xl font-bold">Comprehensive Resources</h3>
