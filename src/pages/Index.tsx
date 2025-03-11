@@ -97,14 +97,51 @@ const Index = () => {
                   <div className="absolute -inset-1 bg-gradient-to-r from-blue-400 to-teal-400 rounded-xl blur-xl opacity-30 animate-pulse" style={{ animationDelay: "0.5s" }}></div>
                   <div className="absolute -inset-1.5 bg-gradient-to-r from-yellow-300 to-pink-400 rounded-xl blur-xl opacity-20 animate-pulse" style={{ animationDelay: "1s" }}></div>
                   
-                  {/* Main image */}
+                  {/* Main image - replaced with cartoon illustration */}
                   <div className="relative overflow-hidden rounded-2xl shadow-2xl border-4 border-white bg-white transform rotate-1">
                     <div className="absolute inset-0 bg-gradient-to-tr from-indigo-900/30 to-purple-800/30 z-10 mix-blend-overlay"></div>
-                    <img
-                      src="https://images.unsplash.com/photo-1485827404703-89b55fcc595e"
-                      alt="Cute robot learning companion"
+                    <svg 
                       className="w-full h-[400px] object-cover object-center transform transition-transform hover:scale-105 duration-700"
-                    />
+                      viewBox="0 0 600 500" 
+                      xmlns="http://www.w3.org/2000/svg"
+                    >
+                      {/* Background */}
+                      <circle cx="300" cy="250" r="240" fill="#FF7E5F" opacity="0.8" />
+                      
+                      {/* Character body - stylized U shape similar to the reference */}
+                      <path 
+                        d="M180 100 C 180 320, 300 380, 420 320 L 420 100 L 350 100 L 350 320 C 300 350, 250 350, 230 320 L 230 100 Z" 
+                        fill="#2A2A2A" 
+                      />
+                      
+                      {/* Character features */}
+                      <circle cx="290" cy="180" r="15" fill="white" opacity="0.7" /> {/* Eye */}
+                      <circle cx="370" cy="180" r="15" fill="white" opacity="0.7" /> {/* Eye */}
+                      <path d="M270 220 Q 330 250 390 220" stroke="white" strokeWidth="5" fill="transparent" opacity="0.7" /> {/* Smile */}
+                      
+                      {/* Book element */}
+                      <rect x="170" y="330" width="60" height="80" rx="5" fill="#6366F1" />
+                      <rect x="230" y="330" width="60" height="80" rx="5" fill="#8B5CF6" />
+                      <path d="M175 345 H 225" stroke="white" strokeWidth="2" />
+                      <path d="M175 355 H 215" stroke="white" strokeWidth="2" />
+                      <path d="M175 365 H 220" stroke="white" strokeWidth="2" />
+                      
+                      {/* Decorative elements */}
+                      <circle cx="450" cy="150" r="25" fill="#F472B6" opacity="0.9" />
+                      <circle cx="150" cy="200" r="20" fill="#34D399" opacity="0.9" />
+                      <circle cx="400" cy="350" r="15" fill="#FBBF24" opacity="0.9" />
+                      
+                      {/* Floating objects */}
+                      <circle cx="200" cy="100" r="10" fill="#A78BFA" opacity="0.8">
+                        <animate attributeName="cy" values="100;90;100" dur="3s" repeatCount="indefinite" />
+                      </circle>
+                      <circle cx="400" cy="120" r="8" fill="#F472B6" opacity="0.8">
+                        <animate attributeName="cy" values="120;110;120" dur="2.5s" repeatCount="indefinite" />
+                      </circle>
+                      <circle cx="150" cy="300" r="12" fill="#34D399" opacity="0.8">
+                        <animate attributeName="cy" values="300;290;300" dur="4s" repeatCount="indefinite" />
+                      </circle>
+                    </svg>
                     
                     {/* Overlay elements */}
                     <div className="absolute top-4 right-4 h-14 w-14 rounded-full bg-white/90 backdrop-blur-md flex items-center justify-center z-20 animate-float border-2 border-pink-200">
