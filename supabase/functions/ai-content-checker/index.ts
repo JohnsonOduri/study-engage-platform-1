@@ -1,11 +1,12 @@
 
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
-// Define CORS headers
+const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
+
 const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
 serve(async (req) => {
@@ -15,58 +16,52 @@ serve(async (req) => {
   }
 
   try {
-    // Get request body
-    const { userId, text } = await req.json();
-
-    if (!userId || !text) {
-      return new Response(
-        JSON.stringify({ 
-          error: "Missing required fields: userId and text are required" 
-        }), {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          status: 400,
-        }
-      );
+    const { text } = await req.json();
+    
+    if (!openAIApiKey) {
+      throw new Error('OpenAI API key not configured');
     }
 
-    // In a real implementation, we would:
-    // 1. Fetch the user's OpenAI API key from the database
-    // 2. Make a request to OpenAI API to analyze the text
-    // 3. Process the results and return them
-    
-    // For now, we'll return mock data
-    const aiProbability = Math.random() * 100;
-    const plagiarismScore = Math.random() * 100;
-    const analysisResults = [
-      aiProbability > 70 ? 
-        "This text shows strong indicators of AI generation." : 
-        "This text appears to be primarily human-written.",
-      plagiarismScore > 30 ?
-        "Multiple sections appear to be copied from existing sources." :
-        "No significant matching content was found in our database.",
-      "Sentence structures exhibit " + (aiProbability > 70 ? "high" : "low") + " uniformity.",
-      "Vocabulary diversity is " + (aiProbability > 70 ? "limited" : "natural") + ".",
-      "Transitional phrases are " + (aiProbability > 70 ? "repetitive" : "varied") + "."
-    ];
+    // Make request to OpenAI API
+    const openAIResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${openAIApiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o-mini',
+        messages: [
+          {
+            role: 'system',
+            content: 'You are an AI content detection expert. Analyze the following text and provide:\n1. Probability of AI generation (as a percentage)\n2. Plagiarism likelihood (as a percentage)\n3. List of 5 key analysis points.\nRespond in JSON format only with these exact keys: aiProbability, plagiarismScore, analysis'
+          },
+          { role: 'user', content: text }
+        ],
+      }),
+    });
 
-    console.log(`Analyzed content for user ${userId}, AI probability: ${aiProbability.toFixed(1)}%`);
+    const aiResponse = await openAIResponse.json();
+    const analysis = JSON.parse(aiResponse.choices[0].message.content);
+    
+    // Log the successful analysis
+    console.log('Successfully analyzed content:', {
+      textLength: text.length,
+      aiProbability: analysis.aiProbability,
+      plagiarismScore: analysis.plagiarismScore
+    });
 
     return new Response(
-      JSON.stringify({
-        aiProbability,
-        plagiarismScore,
-        analysisResults
-      }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 200,
-      }
+      JSON.stringify(analysis),
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   } catch (error) {
-    console.error("Error in ai-content-checker function:", error);
+    console.error('Error in ai-content-checker:', error);
     return new Response(
-      JSON.stringify({ error: error.message || "An error occurred" }), {
+      JSON.stringify({ error: error.message }),
+      { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 500,
+        status: 500 
       }
     );
   }

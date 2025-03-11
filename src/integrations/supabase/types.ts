@@ -39,6 +39,33 @@ export type Database = {
         }
         Relationships: []
       }
+      ai_responses: {
+        Row: {
+          created_at: string | null
+          id: string
+          prompt: string
+          response: Json
+          response_type: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          prompt: string
+          response: Json
+          response_type: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          prompt?: string
+          response?: Json
+          response_type?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       api_keys: {
         Row: {
           api_key: string

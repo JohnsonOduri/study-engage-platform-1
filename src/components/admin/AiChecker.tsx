@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
@@ -8,7 +7,6 @@ import { Bot, AlertTriangle, FileText, Upload, RotateCw, CheckCircle, Copy } fro
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { AIContentCheck } from "@/lib/types";
 
 export const AiChecker = () => {
   const { user, isAuthenticated } = useAuth();
@@ -67,59 +65,36 @@ export const AiChecker = () => {
     setIsChecking(true);
 
     try {
-      // In a real implementation, we would call our Supabase Edge Function 
-      // that would use the stored OpenAI API key to analyze the text
-      // For now, we'll simulate this with a timeout and random data
+      const { data, error } = await supabase.functions.invoke('ai-content-checker', {
+        body: { text }
+      });
 
-      setTimeout(async () => {
-        // Mock response
-        const aiScore = Math.random() * 100;
-        const plagScore = Math.random() * 100;
-        
-        const analysis = [
-          aiScore > 70 ? 
-            "This text shows strong indicators of AI generation." : 
-            "This text appears to be primarily human-written.",
-          plagScore > 30 ?
-            "Multiple sections appear to be copied from existing sources." :
-            "No significant matching content was found in our database.",
-          "Sentence structures exhibit " + (aiScore > 70 ? "high" : "low") + " uniformity.",
-          "Vocabulary diversity is " + (aiScore > 70 ? "limited" : "natural") + ".",
-          "Transitional phrases are " + (aiScore > 70 ? "repetitive" : "varied") + "."
-        ];
-        
-        const resultData = {
-          aiProbability: aiScore,
-          plagiarismScore: plagScore,
-          analysis: analysis
-        };
-        
-        setResult(resultData);
-        
-        // Store the check result in Supabase
-        try {
-          const { error } = await supabase
-            .from('ai_content_checks')
-            .insert({
-              user_id: user?.id,
-              text_content: text,
-              ai_probability: aiScore,
-              plagiarism_score: plagScore,
-              analysis_results: analysis
-            });
-            
-          if (error) {
-            console.error("Error saving check result:", error);
-          }
-        } catch (err) {
-          console.error("Error in storing check result:", err);
+      if (error) throw error;
+
+      setResult(data);
+      
+      // Store the check result in Supabase
+      try {
+        const { error: dbError } = await supabase
+          .from('ai_content_checks')
+          .insert({
+            user_id: user?.id,
+            text_content: text,
+            ai_probability: data.aiProbability,
+            plagiarism_score: data.plagiarismScore,
+            analysis_results: data.analysis
+          });
+          
+        if (dbError) {
+          console.error("Error saving check result:", dbError);
         }
-        
-        setIsChecking(false);
-      }, 2000);
-    } catch (error) {
+      } catch (err) {
+        console.error("Error in storing check result:", err);
+      }
+    } catch (error: any) {
       console.error("Error checking content:", error);
-      toast.error("Failed to analyze the content. Please try again.");
+      toast.error(error.message || "Failed to analyze the content");
+    } finally {
       setIsChecking(false);
     }
   };

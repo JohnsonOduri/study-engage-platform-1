@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -19,7 +18,6 @@ export const ApiKeyManager = () => {
   const [newApiKey, setNewApiKey] = useState("");
   const [serviceName, setServiceName] = useState("openai");
   
-  // Fetch existing API keys
   useEffect(() => {
     if (isAuthenticated && user) {
       fetchApiKeys();
@@ -56,9 +54,9 @@ export const ApiKeyManager = () => {
     try {
       setIsLoading(true);
       
-      const openaiKey = apiKeys.find(key => key.service_name === serviceName);
+      const existingKey = apiKeys.find(key => key.service_name === serviceName);
       
-      if (openaiKey) {
+      if (existingKey) {
         // Update existing key
         const { error } = await supabase
           .from('api_keys')
@@ -66,7 +64,7 @@ export const ApiKeyManager = () => {
             api_key: newApiKey,
             updated_at: new Date().toISOString()
           })
-          .eq('id', openaiKey.id);
+          .eq('id', existingKey.id);
           
         if (error) throw error;
         toast.success(`${serviceName.toUpperCase()} API key updated successfully`);
@@ -86,6 +84,15 @@ export const ApiKeyManager = () => {
       
       setNewApiKey("");
       fetchApiKeys();
+
+      // Set environment variable in Supabase
+      const { error: functionError } = await supabase.functions.invoke('update-openai-key', {
+        body: { apiKey: newApiKey }
+      });
+
+      if (functionError) {
+        throw functionError;
+      }
     } catch (error: any) {
       console.error("Error saving API key:", error);
       toast.error(error.message || "Failed to save API key");
