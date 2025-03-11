@@ -59,7 +59,9 @@ export const AuthForm = () => {
           return;
         }
         await signup(formData.name, formData.email, formData.password, formData.role);
-        // For signup, we wait for the auth state to update which will then trigger navigation
+        // For signup, show a success message and switch to login mode
+        setMode("login");
+        toast.success("Account created! You can now log in.");
       }
     } catch (error) {
       console.error("Authentication error:", error);
@@ -130,6 +132,7 @@ export const AuthForm = () => {
             value={formData.password}
             onChange={handleInputChange}
             className="h-10"
+            minLength={6}
           />
         </div>
 

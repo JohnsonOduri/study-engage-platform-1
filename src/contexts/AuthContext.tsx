@@ -24,11 +24,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
+        console.log("Auth state changed:", event, session);
         setLoading(true);
         
         if (session) {
           // User is logged in
-          const { data: profileData } = await supabase
+          const { data: profileData, error: profileError } = await supabase
             .from('profiles')
             .select('*')
             .eq('id', session.user.id)
@@ -42,6 +43,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               role: profileData.role as UserRole,
               avatar: profileData.avatar_url
             });
+          } else if (profileError) {
+            console.error("Error fetching profile:", profileError);
           }
         } else {
           // User is not logged in
@@ -54,10 +57,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     // Initial session check
     const initializeAuth = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      
+      if (sessionError) {
+        console.error("Error getting session:", sessionError);
+        setLoading(false);
+        return;
+      }
       
       if (session) {
-        const { data: profileData } = await supabase
+        console.log("Found existing session:", session);
+        const { data: profileData, error: profileError } = await supabase
           .from('profiles')
           .select('*')
           .eq('id', session.user.id)
@@ -71,6 +81,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             role: profileData.role as UserRole,
             avatar: profileData.avatar_url
           });
+        } else if (profileError) {
+          console.error("Error fetching profile:", profileError);
         }
       }
       
@@ -89,7 +101,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       setLoading(true);
       
-      const { error } = await supabase.auth.signInWithPassword({
+      const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
@@ -112,7 +124,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       setLoading(true);
       
-      const { error } = await supabase.auth.signUp({
+      const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
