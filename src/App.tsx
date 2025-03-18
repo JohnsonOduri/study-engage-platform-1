@@ -13,11 +13,26 @@ import AdminDashboard from "./pages/AdminDashboard";
 import StudentDashboard from "./pages/StudentDashboard";
 import Courses from "./pages/Courses";
 import NotFound from "./pages/NotFound";
-
+import{getDatabase,ref ,set} from "firebase/database"
+import{app} from "./firebase"
+import React from 'react'
 const queryClient = new QueryClient();
 
-const App = () => (
-  <QueryClientProvider client={queryClient}>
+
+
+export default function App() {
+  const db =getDatabase(app);
+  const putData=()=>{
+    set(ref(db,'users/johnson'),{
+      id:1,
+      name:"Johnson",
+      age:18
+    })
+  }
+      return (
+    <div>
+
+      <QueryClientProvider client={queryClient}>
     <AuthProvider>
       <TooltipProvider>
         <Toaster />
@@ -38,6 +53,10 @@ const App = () => (
       </TooltipProvider>
     </AuthProvider>
   </QueryClientProvider>
-);
+    </div>
+  )
+}
 
-export default App;
+
+
+
