@@ -16,7 +16,7 @@ serve(async (req) => {
   }
 
   try {
-    const { text } = await req.json();
+    const { date } = await req.json();
     
     if (!deepseekApiKey) {
       throw new Error('DeepSeek API key not configured');
@@ -34,11 +34,29 @@ serve(async (req) => {
         messages: [
           {
             role: 'system',
-            content: 'You are an AI content detection expert. Analyze the following text and provide:\n1. Probability of AI generation (as a percentage)\n2. Plagiarism likelihood (as a percentage)\n3. List of 5 key analysis points.\nRespond in JSON format only with these exact keys: aiProbability, plagiarismScore, analysis'
+            content: `You are an AI study planning assistant. Create a study plan for a student for the date ${date}. 
+            The plan should include courses and tasks. Return your response as JSON only with the following format:
+            {
+              "studyPlan": [
+                {
+                  "id": 1,
+                  "title": "Course Name",
+                  "tasks": [
+                    {
+                      "id": 1,
+                      "title": "Task description",
+                      "duration": 45,
+                      "completed": false,
+                      "time": "9:00 AM"
+                    }
+                  ]
+                }
+              ]
+            }`
           },
-          { role: 'user', content: text }
+          { role: 'user', content: `Create a study plan for ${date} focusing on computer science topics` }
         ],
-        temperature: 0.3,
+        temperature: 0.7,
       }),
     });
 
@@ -48,21 +66,17 @@ serve(async (req) => {
       throw new Error(`DeepSeek API error: ${aiResponse.error.message}`);
     }
     
-    const analysis = JSON.parse(aiResponse.choices[0].message.content);
+    const studyPlan = JSON.parse(aiResponse.choices[0].message.content);
     
-    // Log the successful analysis
-    console.log('Successfully analyzed content:', {
-      textLength: text.length,
-      aiProbability: analysis.aiProbability,
-      plagiarismScore: analysis.plagiarismScore
-    });
+    // Log the successful generation
+    console.log('Successfully generated study plan for:', date);
 
     return new Response(
-      JSON.stringify(analysis),
+      JSON.stringify(studyPlan),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   } catch (error) {
-    console.error('Error in ai-content-checker:', error);
+    console.error('Error in generate-study-plan:', error);
     return new Response(
       JSON.stringify({ error: error.message }),
       { 

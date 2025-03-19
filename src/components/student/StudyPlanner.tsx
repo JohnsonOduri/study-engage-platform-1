@@ -1,5 +1,5 @@
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -16,18 +16,22 @@ import {
   RotateCw,
   FileText,
   Trash2,
-  Bot
+  Bot,
+  AlertTriangle
 } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 
 export const StudyPlanner = () => {
-  const { user } = useAuth();
+  const { user, isAuthenticated } = useAuth();
   const [date, setDate] = useState<Date | undefined>(new Date());
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [hasDeepSeekKey, setHasDeepSeekKey] = useState(false);
   
   // Sample study plan data
-  const studyPlanData = [
+  const [studyPlanData, setStudyPlanData] = useState([
     { 
       id: 1, 
       title: "Web Development", 
@@ -45,10 +49,65 @@ export const StudyPlanner = () => {
         { id: 5, title: "ER Diagrams Assignment", duration: 120, completed: false, time: "4:00 PM" },
       ]
     },
-  ];
+  ]);
 
-  const generateAIPlan = () => {
-    toast.success("AI-generated study plan created!");
+  // Check if user has DeepSeek API key
+  useEffect(() => {
+    if (isAuthenticated && user) {
+      checkForDeepSeekKey();
+    }
+  }, [isAuthenticated, user]);
+
+  const checkForDeepSeekKey = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('api_keys')
+        .select('id')
+        .eq('user_id', user?.id)
+        .eq('service_name', 'deepseek')
+        .maybeSingle();
+
+      if (error) {
+        console.error("Error checking for DeepSeek key:", error);
+        return;
+      }
+
+      setHasDeepSeekKey(!!data);
+    } catch (error) {
+      console.error("Error in API key check:", error);
+    }
+  };
+
+  const generateAIPlan = async () => {
+    if (!isAuthenticated) {
+      toast.error("Please login to use this feature");
+      return;
+    }
+
+    if (!hasDeepSeekKey) {
+      toast.error("Please add your DeepSeek API key in the API Key Manager");
+      return;
+    }
+
+    setIsGenerating(true);
+
+    try {
+      const { data, error } = await supabase.functions.invoke('generate-study-plan', {
+        body: { date: date ? format(date, "yyyy-MM-dd") : format(new Date(), "yyyy-MM-dd") }
+      });
+
+      if (error) throw error;
+
+      if (data && data.studyPlan) {
+        setStudyPlanData(data.studyPlan);
+        toast.success("AI-generated study plan created!");
+      }
+    } catch (error: any) {
+      console.error("Error generating study plan:", error);
+      toast.error(error.message || "Failed to generate study plan");
+    } finally {
+      setIsGenerating(false);
+    }
   };
 
   return (
@@ -77,12 +136,41 @@ export const StudyPlanner = () => {
             </PopoverContent>
           </Popover>
           
-          <Button onClick={generateAIPlan} className="gap-2">
-            <Bot className="h-4 w-4" />
-            Generate AI Plan
+          <Button 
+            onClick={generateAIPlan} 
+            className="gap-2"
+            disabled={isGenerating || !isAuthenticated || !hasDeepSeekKey}
+          >
+            {isGenerating ? (
+              <>
+                <RotateCw className="h-4 w-4 mr-2 animate-spin" />
+                Generating...
+              </>
+            ) : (
+              <>
+                <Bot className="h-4 w-4" />
+                Generate AI Plan
+              </>
+            )}
           </Button>
         </div>
       </div>
+
+      {isAuthenticated && !hasDeepSeekKey && (
+        <Card className="border-amber-200 bg-amber-50">
+          <CardContent className="pt-6">
+            <div className="flex items-start gap-2">
+              <AlertTriangle className="h-5 w-5 text-amber-500 flex-shrink-0 mt-0.5" />
+              <div>
+                <h3 className="font-medium text-amber-800">DeepSeek API Key Required</h3>
+                <p className="text-sm text-amber-700">
+                  Please add your DeepSeek API key in the API Key Manager to use AI plan generation.
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-6">

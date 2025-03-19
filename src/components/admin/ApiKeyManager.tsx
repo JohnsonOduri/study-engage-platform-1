@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -16,7 +17,7 @@ export const ApiKeyManager = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [showKey, setShowKey] = useState<{[key: string]: boolean}>({});
   const [newApiKey, setNewApiKey] = useState("");
-  const [serviceName, setServiceName] = useState("openai");
+  const [serviceName, setServiceName] = useState("deepseek");
   
   useEffect(() => {
     if (isAuthenticated && user) {
@@ -67,7 +68,7 @@ export const ApiKeyManager = () => {
           .eq('id', existingKey.id);
           
         if (error) throw error;
-        toast.success(`${serviceName.toUpperCase()} API key updated successfully`);
+        toast.success(`${serviceName === 'deepseek' ? 'DeepSeek' : serviceName.toUpperCase()} API key updated successfully`);
       } else {
         // Insert new key
         const { error } = await supabase
@@ -79,19 +80,19 @@ export const ApiKeyManager = () => {
           });
           
         if (error) throw error;
-        toast.success(`${serviceName.toUpperCase()} API key saved successfully`);
+        toast.success(`${serviceName === 'deepseek' ? 'DeepSeek' : serviceName.toUpperCase()} API key saved successfully`);
       }
       
       setNewApiKey("");
       fetchApiKeys();
 
       // Set environment variable in Supabase
-      const { error: functionError } = await supabase.functions.invoke('update-openai-key', {
+      const { error: functionError } = await supabase.functions.invoke('update-deepseek-key', {
         body: { apiKey: newApiKey }
       });
 
       if (functionError) {
-        throw functionError;
+        console.error("Error updating environment variable:", functionError);
       }
     } catch (error: any) {
       console.error("Error saving API key:", error);
@@ -160,6 +161,7 @@ export const ApiKeyManager = () => {
                   <SelectValue placeholder="Select Service" />
                 </SelectTrigger>
                 <SelectContent>
+                  <SelectItem value="deepseek">DeepSeek</SelectItem>
                   <SelectItem value="openai">OpenAI</SelectItem>
                 </SelectContent>
               </Select>
@@ -189,7 +191,7 @@ export const ApiKeyManager = () => {
                 {apiKeys.map((key) => (
                   <div key={key.id} className="flex items-center justify-between p-3 border rounded-md">
                     <div>
-                      <p className="font-medium">{key.service_name.toUpperCase()}</p>
+                      <p className="font-medium">{key.service_name === 'deepseek' ? 'DeepSeek' : key.service_name.toUpperCase()}</p>
                       <p className="text-sm text-muted-foreground">
                         {showKey[key.id] ? key.api_key : '•'.repeat(Math.min(20, key.api_key.length))}
                       </p>
@@ -216,7 +218,7 @@ export const ApiKeyManager = () => {
                           <DialogHeader>
                             <DialogTitle>Delete API Key</DialogTitle>
                             <DialogDescription>
-                              Are you sure you want to delete this {key.service_name.toUpperCase()} API key? This action cannot be undone.
+                              Are you sure you want to delete this {key.service_name === 'deepseek' ? 'DeepSeek' : key.service_name.toUpperCase()} API key? This action cannot be undone.
                             </DialogDescription>
                           </DialogHeader>
                           <DialogFooter>

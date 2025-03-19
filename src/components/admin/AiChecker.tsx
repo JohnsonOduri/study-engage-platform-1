@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
@@ -17,30 +18,30 @@ export const AiChecker = () => {
     analysis: string[];
   }>(null);
   const [isChecking, setIsChecking] = useState(false);
-  const [hasOpenAIKey, setHasOpenAIKey] = useState(false);
+  const [hasDeepSeekKey, setHasDeepSeekKey] = useState(false);
 
-  // Check if user has OpenAI API key
+  // Check if user has DeepSeek API key
   useEffect(() => {
     if (isAuthenticated && user) {
-      checkForOpenAIKey();
+      checkForDeepSeekKey();
     }
   }, [isAuthenticated, user]);
 
-  const checkForOpenAIKey = async () => {
+  const checkForDeepSeekKey = async () => {
     try {
       const { data, error } = await supabase
         .from('api_keys')
         .select('id')
         .eq('user_id', user?.id)
-        .eq('service_name', 'openai')
+        .eq('service_name', 'deepseek')
         .maybeSingle();
 
       if (error) {
-        console.error("Error checking for OpenAI key:", error);
+        console.error("Error checking for DeepSeek key:", error);
         return;
       }
 
-      setHasOpenAIKey(!!data);
+      setHasDeepSeekKey(!!data);
     } catch (error) {
       console.error("Error in API key check:", error);
     }
@@ -57,8 +58,8 @@ export const AiChecker = () => {
       return;
     }
 
-    if (!hasOpenAIKey) {
-      toast.error("Please add your OpenAI API key in the API Key Manager");
+    if (!hasDeepSeekKey) {
+      toast.error("Please add your DeepSeek API key in the API Key Manager");
       return;
     }
 
@@ -155,15 +156,15 @@ ${text}
         </Card>
       )}
 
-      {isAuthenticated && !hasOpenAIKey && (
+      {isAuthenticated && !hasDeepSeekKey && (
         <Card className="border-amber-200 bg-amber-50">
           <CardContent className="pt-6">
             <div className="flex items-start gap-2">
               <AlertTriangle className="h-5 w-5 text-amber-500 flex-shrink-0 mt-0.5" />
               <div>
-                <h3 className="font-medium text-amber-800">OpenAI API Key Required</h3>
+                <h3 className="font-medium text-amber-800">DeepSeek API Key Required</h3>
                 <p className="text-sm text-amber-700">
-                  Please add your OpenAI API key in the API Key Manager to use this feature.
+                  Please add your DeepSeek API key in the API Key Manager to use this feature.
                 </p>
               </div>
             </div>
@@ -196,7 +197,7 @@ ${text}
             </Button>
             <Button 
               onClick={handleCheck} 
-              disabled={isChecking || !text.trim() || !isAuthenticated || !hasOpenAIKey}
+              disabled={isChecking || !text.trim() || !isAuthenticated || !hasDeepSeekKey}
             >
               {isChecking ? (
                 <>
