@@ -13,50 +13,34 @@ import AdminDashboard from "./pages/AdminDashboard";
 import StudentDashboard from "./pages/StudentDashboard";
 import Courses from "./pages/Courses";
 import NotFound from "./pages/NotFound";
-import{getDatabase,ref ,set} from "firebase/database"
-import{app} from "./firebase"
-import React from 'react'
+import React from 'react';
+
 const queryClient = new QueryClient();
 
-
-
 export default function App() {
-  const db =getDatabase(app);
-  const putData=()=>{
-    set(ref(db,'users/johnson'),{
-      id:1,
-      name:"Johnson",
-      age:18
-    })
-  }
-      return (
+  return (
     <div>
-
       <QueryClientProvider client={queryClient}>
-    <AuthProvider>
-      <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
-          <Routes>
-            <Route path="/" element={<Index />} />
-            <Route path="/login" element={<Login />} />
-            <Route path="/auth" element={<Auth />} />
-            <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/admin" element={<AdminDashboard />} />
-            <Route path="/student" element={<StudentDashboard />} />
-            <Route path="/courses" element={<Courses />} />
-            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </BrowserRouter>
-      </TooltipProvider>
-    </AuthProvider>
-  </QueryClientProvider>
+        <AuthProvider>
+          <TooltipProvider>
+            <Toaster />
+            <Sonner />
+            <BrowserRouter>
+              <Routes>
+                <Route path="/" element={<Index />} />
+                <Route path="/login" element={<Login />} />
+                <Route path="/auth" element={<Auth />} />
+                <Route path="/dashboard" element={<Dashboard />} />
+                <Route path="/admin" element={<AdminDashboard />} />
+                <Route path="/student" element={<StudentDashboard />} />
+                <Route path="/courses" element={<Courses />} />
+                {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </BrowserRouter>
+          </TooltipProvider>
+        </AuthProvider>
+      </QueryClientProvider>
     </div>
-  )
+  );
 }
-
-
-
-
