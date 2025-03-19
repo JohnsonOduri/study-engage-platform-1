@@ -7,10 +7,12 @@ import {
   signInWithEmailAndPassword, 
   signOut,
   onAuthStateChanged,
-  updateProfile
+  updateProfile,
+  sendEmailVerification,
+  User as FirebaseUser
 } from "firebase/auth";
 import { auth, database } from "@/firebase";
-import { ref, set, get } from "firebase/database";
+import { ref, set, get, onValue } from "firebase/database";
 
 interface AuthContextType {
   user: User | null;
@@ -27,14 +29,31 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
+  const setupUserInDatabase = async (firebaseUser: FirebaseUser, userData: { name: string, role: UserRole }) => {
+    try {
+      // Save additional user data to Firebase Realtime Database
+      await set(ref(database, `users/${firebaseUser.uid}`), {
+        name: userData.name,
+        email: firebaseUser.email,
+        role: userData.role,
+        createdAt: new Date().toISOString()
+      });
+      
+      console.log("User data saved to database");
+      return true;
+    } catch (error) {
+      console.error("Error saving user data to database:", error);
+      return false;
+    }
+  };
+
   useEffect(() => {
     // Set up auth state listener with Firebase
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-      console.log("Auth state changed:", firebaseUser);
+      console.log("Auth state changed:", firebaseUser ? "SIGNED_IN" : "null", firebaseUser);
       setLoading(true);
       
       if (firebaseUser) {
-        // User is logged in
         try {
           // Get user profile data from Firebase Realtime Database
           const userRef = ref(database, `users/${firebaseUser.uid}`);
@@ -59,9 +78,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               role: 'student' as UserRole, // Default role
               avatar: firebaseUser.photoURL || ''
             });
+            
+            // Set up the user in the database
+            await setupUserInDatabase(firebaseUser, {
+              name: firebaseUser.displayName || '',
+              role: 'student'
+            });
           }
         } catch (error) {
           console.error("Error fetching user data:", error);
+          toast.error("Error loading user profile");
         }
       } else {
         // User is not logged in
@@ -85,7 +111,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return Promise.resolve();
     } catch (error: any) {
       console.error("Login error:", error);
-      toast.error(error.message || "Failed to login");
+      
+      let errorMessage = "Failed to login";
+      if (error.code === 'auth/user-not-found') {
+        errorMessage = "No account exists with this email";
+      } else if (error.code === 'auth/wrong-password') {
+        errorMessage = "Incorrect password";
+      } else if (error.code === 'auth/invalid-credential') {
+        errorMessage = "Invalid login credentials";
+      }
+      
+      toast.error(errorMessage);
       setLoading(false);
       return Promise.reject(error);
     }
@@ -104,19 +140,32 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         displayName: name
       });
       
-      // Save additional user data to Firebase Realtime Database
-      await set(ref(database, `users/${firebaseUser.uid}`), {
-        name,
-        email,
-        role,
-        createdAt: new Date().toISOString()
-      });
+      // Send email verification
+      await sendEmailVerification(firebaseUser);
       
-      toast.success("Account created successfully");
+      // Save additional user data to Firebase Realtime Database
+      const success = await setupUserInDatabase(firebaseUser, { name, role });
+      
+      if (success) {
+        toast.success("Account created successfully! Please verify your email.");
+      } else {
+        toast.warning("Account created but profile data could not be saved");
+      }
+      
       return Promise.resolve();
     } catch (error: any) {
       console.error("Signup error:", error);
-      toast.error(error.message || "Failed to create account");
+      
+      let errorMessage = "Failed to create account";
+      if (error.code === 'auth/email-already-in-use') {
+        errorMessage = "Email is already in use";
+      } else if (error.code === 'auth/weak-password') {
+        errorMessage = "Password is too weak";
+      } else if (error.code === 'auth/invalid-email') {
+        errorMessage = "Invalid email address";
+      }
+      
+      toast.error(errorMessage);
       setLoading(false);
       return Promise.reject(error);
     }
