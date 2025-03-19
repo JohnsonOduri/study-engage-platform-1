@@ -1,3 +1,4 @@
+
 import { getAnalytics } from "firebase/analytics";
 import { getAuth, connectAuthEmulator } from "firebase/auth";
 import { getDatabase, connectDatabaseEmulator } from "firebase/database";
@@ -28,13 +29,11 @@ export const auth = getAuth(app);
 export const database = getDatabase(app);
 export const storage = getStorage(app);
 
-// Connect to emulators for local development if needed
-const isLocalhost =
-  window.location.hostname === "localhost" ||
-  window.location.hostname === "127.0.0.1";
+// Only connect to emulators if explicitly enabled via localStorage
+const useEmulators = localStorage.getItem("useFirebaseEmulators") === "true";
 
-if (isLocalhost) {
-  // Uncomment these lines when using Firebase emulators
+if (useEmulators) {
+  // Connect to Firebase emulators
   connectAuthEmulator(auth, "http://localhost:9099");
   connectDatabaseEmulator(database, "localhost", 9000);
   connectStorageEmulator(storage, "localhost", 9199);
