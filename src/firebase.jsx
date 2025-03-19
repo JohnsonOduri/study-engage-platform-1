@@ -9,6 +9,8 @@ import { initializeApp } from "firebase/app";
 const firebaseConfig = {
   apiKey: "AIzaSyAxDdxu04GUsgrFuHF8nzi9Vn5W6w-UssQ",
   authDomain: "educonnect-66985.firebaseapp.com",
+  databaseURL:
+    "https://educonnect-66985-default-rtdb.asia-southeast1.firebasedatabase.app/",
   projectId: "educonnect-66985",
   storageBucket: "educonnect-66985.appspot.com",
   messagingSenderId: "929385552633",
