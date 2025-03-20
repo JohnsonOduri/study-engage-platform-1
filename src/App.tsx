@@ -4,7 +4,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import Index from "./pages/Index";
 import Login from "./pages/Login";
 import Auth from "./pages/Auth";
@@ -34,6 +34,10 @@ export default function App() {
                 <Route path="/admin" element={<AdminDashboard />} />
                 <Route path="/student" element={<StudentDashboard />} />
                 <Route path="/courses" element={<Courses />} />
+                {/* Direct routes to AI features for easier access */}
+                <Route path="/admin/ai-checker" element={<Navigate to="/admin" state={{ defaultTab: "ai-checker" }} />} />
+                <Route path="/student/ai-planner" element={<Navigate to="/student" state={{ defaultTab: "planner" }} />} />
+                <Route path="/student/ai-quiz" element={<Navigate to="/student" state={{ defaultTab: "quizzes" }} />} />
                 {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                 <Route path="*" element={<NotFound />} />
               </Routes>

@@ -1,7 +1,7 @@
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
-import { Navigate } from "react-router-dom";
+import { Navigate, useLocation } from "react-router-dom";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -14,7 +14,11 @@ import {
   Clock, 
   BookOpen,
   Laptop,
-  CheckCircle
+  CheckCircle,
+  Bot,
+  Sparkles,
+  Brain,
+  FileQuestion
 } from "lucide-react";
 import { MyCourses } from "@/components/student/MyCourses";
 import { MyAssignments } from "@/components/student/MyAssignments";
@@ -23,10 +27,19 @@ import { StudyPlanner } from "@/components/student/StudyPlanner";
 import { DiscussionForums } from "@/components/student/DiscussionForums";
 import { LeaderboardView } from "@/components/student/LeaderboardView";
 import { CodeEditor } from "@/components/student/CodeEditor";
+import { QuizGenerator } from "@/components/student/QuizGenerator";
 
 const StudentDashboard = () => {
   const { user, isAuthenticated, loading } = useAuth();
+  const location = useLocation();
   const [activeTab, setActiveTab] = useState("overview");
+
+  // Set initial tab based on location state if provided
+  useEffect(() => {
+    if (location.state && location.state.defaultTab) {
+      setActiveTab(location.state.defaultTab);
+    }
+  }, [location.state]);
 
   if (loading) {
     return (
@@ -63,7 +76,7 @@ const StudentDashboard = () => {
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-2">
+          <TabsList className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-9 gap-2">
             <TabsTrigger value="overview" className="flex items-center gap-2">
               <BookOpen className="h-4 w-4" />
               <span className="hidden md:inline">Overview</span>
@@ -80,9 +93,13 @@ const StudentDashboard = () => {
               <CheckCircle className="h-4 w-4" />
               <span className="hidden md:inline">Progress</span>
             </TabsTrigger>
-            <TabsTrigger value="planner" className="flex items-center gap-2">
-              <Calendar className="h-4 w-4" />
-              <span className="hidden md:inline">Study Planner</span>
+            <TabsTrigger value="planner" className="flex items-center gap-2 bg-purple-100 dark:bg-purple-900/30 text-purple-800 dark:text-purple-300">
+              <Brain className="h-4 w-4" />
+              <span className="hidden md:inline">AI Study Planner</span>
+            </TabsTrigger>
+            <TabsTrigger value="quizzes" className="flex items-center gap-2 bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300">
+              <FileQuestion className="h-4 w-4" />
+              <span className="hidden md:inline">AI Quiz Generator</span>
             </TabsTrigger>
             <TabsTrigger value="forums" className="flex items-center gap-2">
               <MessageSquare className="h-4 w-4" />
@@ -166,6 +183,44 @@ const StudentDashboard = () => {
                   ))}
                 </div>
               </div>
+              <div className="bg-card p-6 rounded-lg border border-border shadow-subtle">
+                <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
+                  <Bot className="h-5 w-5 text-primary" />
+                  AI Features
+                </h2>
+                <div className="space-y-4">
+                  <div className="flex items-start gap-4 pb-4 border-b">
+                    <div className="bg-primary/10 w-10 h-10 rounded-full flex items-center justify-center">
+                      <Brain className="h-5 w-5 text-primary" />
+                    </div>
+                    <div>
+                      <h4 className="font-medium">AI Study Planner</h4>
+                      <p className="text-muted-foreground text-sm">Generate personalized study schedules based on your courses</p>
+                      <button 
+                        className="text-xs text-primary mt-1 flex items-center gap-1"
+                        onClick={() => setActiveTab("planner")}
+                      >
+                        Try it now <Sparkles className="h-3 w-3" />
+                      </button>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-4 pb-4 border-b">
+                    <div className="bg-primary/10 w-10 h-10 rounded-full flex items-center justify-center">
+                      <FileQuestion className="h-5 w-5 text-primary" />
+                    </div>
+                    <div>
+                      <h4 className="font-medium">AI Quiz Generator</h4>
+                      <p className="text-muted-foreground text-sm">Create custom quizzes on any topic to test your knowledge</p>
+                      <button 
+                        className="text-xs text-primary mt-1 flex items-center gap-1"
+                        onClick={() => setActiveTab("quizzes")}
+                      >
+                        Try it now <Sparkles className="h-3 w-3" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
           </TabsContent>
 
@@ -183,6 +238,10 @@ const StudentDashboard = () => {
           
           <TabsContent value="planner">
             <StudyPlanner />
+          </TabsContent>
+          
+          <TabsContent value="quizzes">
+            <QuizGenerator />
           </TabsContent>
           
           <TabsContent value="forums">

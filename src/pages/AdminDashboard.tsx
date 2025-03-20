@@ -1,7 +1,7 @@
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
-import { Navigate } from "react-router-dom";
+import { Navigate, useLocation } from "react-router-dom";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -14,11 +14,19 @@ import { Communications } from "@/components/admin/Communications";
 import { Analytics } from "@/components/admin/Analytics";
 import { Integrations } from "@/components/admin/Integrations";
 import { AiChecker } from "@/components/admin/AiChecker";
-import { LayoutDashboard, Users, BookOpen, FileText, CheckSquare, Settings, MessageSquare, BarChart, Plug, Bot } from "lucide-react";
+import { LayoutDashboard, Users, BookOpen, FileText, CheckSquare, Settings, MessageSquare, BarChart, Plug, Bot, Sparkles } from "lucide-react";
 
 const AdminDashboard = () => {
   const { user, isAuthenticated, loading } = useAuth();
+  const location = useLocation();
   const [activeTab, setActiveTab] = useState("overview");
+
+  // Set initial tab based on location state if provided
+  useEffect(() => {
+    if (location.state && location.state.defaultTab) {
+      setActiveTab(location.state.defaultTab);
+    }
+  }, [location.state]);
 
   if (loading) {
     return (
@@ -91,7 +99,7 @@ const AdminDashboard = () => {
               <Plug className="h-4 w-4" />
               <span className="hidden md:inline">Integrations</span>
             </TabsTrigger>
-            <TabsTrigger value="ai-checker" className="flex items-center gap-2">
+            <TabsTrigger value="ai-checker" className="flex items-center gap-2 bg-purple-100 dark:bg-purple-900/30 text-purple-800 dark:text-purple-300">
               <Bot className="h-4 w-4" />
               <span className="hidden md:inline">AI Checker</span>
             </TabsTrigger>
