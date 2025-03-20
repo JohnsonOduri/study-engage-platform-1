@@ -4,12 +4,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
-import { 
-  LineChart, 
-  BarChart, 
-  PieChart 
-} from "@/components/ui/recharts";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { 
   Trophy, 
@@ -25,7 +20,7 @@ import {
 
 export const MyProgress = () => {
   const { user } = useAuth();
-  const [timeframe, setTimeframe] = React.useState("weekly");
+  const [timeframe, setTimeframe] = useState("weekly");
   const [selectedSkill, setSelectedSkill] = useState("Web Development");
 
   // Mock data for charts - restructured to match the expected format
@@ -187,7 +182,7 @@ export const MyProgress = () => {
         </CardContent>
       </Card>
 
-      {/* New Weekly Goals Card */}
+      {/* Weekly Goals Card */}
       <Card>
         <CardHeader>
           <CardTitle className="text-lg">Weekly Goals</CardTitle>
@@ -224,10 +219,10 @@ export const MyProgress = () => {
             <CardTitle className="text-lg">Learning Activity</CardTitle>
           </CardHeader>
           <CardContent>
-            <LineChart 
-              data={activityData}
-              height={250}
-            />
+            {/* Placeholder for Learning Activity Chart */}
+            <div className="h-[250px] flex items-center justify-center border rounded-md p-4 bg-slate-50 dark:bg-slate-900">
+              <p className="text-muted-foreground">Learning Activity Chart</p>
+            </div>
           </CardContent>
         </Card>
 
@@ -236,15 +231,15 @@ export const MyProgress = () => {
             <CardTitle className="text-lg">Course Progress</CardTitle>
           </CardHeader>
           <CardContent>
-            <BarChart 
-              data={courseProgressData}
-              height={250}
-            />
+            {/* Placeholder for Course Progress Chart */}
+            <div className="h-[250px] flex items-center justify-center border rounded-md p-4 bg-slate-50 dark:bg-slate-900">
+              <p className="text-muted-foreground">Course Progress Chart</p>
+            </div>
           </CardContent>
         </Card>
       </div>
 
-      {/* Skill Proficiency Chart */}
+      {/* Skill Proficiency Card */}
       <Card>
         <CardHeader>
           <div className="flex justify-between items-center">
@@ -292,11 +287,9 @@ export const MyProgress = () => {
             <CardTitle className="text-lg">Time Distribution</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="flex justify-center">
-              <PieChart 
-                data={timeDistributionData}
-                height={250}
-              />
+            {/* Placeholder for Time Distribution Chart */}
+            <div className="h-[250px] flex items-center justify-center border rounded-md p-4 bg-slate-50 dark:bg-slate-900">
+              <p className="text-muted-foreground">Time Distribution Chart</p>
             </div>
           </CardContent>
         </Card>
@@ -357,8 +350,8 @@ const ProgressStatCard = ({ title, value, detail, progress, icon }: ProgressStat
           </div>
         </div>
         <p className="text-2xl font-bold">{value}</p>
-        <p className="text-sm text-muted-foreground mb-2">{detail}</p>
-        <Progress value={progress} className="h-2" />
+        <p className="text-sm text-muted-foreground">{detail}</p>
+        <Progress value={progress} className="h-2 mt-4" />
       </CardContent>
     </Card>
   );

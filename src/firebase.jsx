@@ -1,11 +1,10 @@
-
-import { getAnalytics } from "firebase/analytics";
+import { initializeApp } from "firebase/app";
+import { getFirestore, connectFirestoreEmulator } from "firebase/firestore";
 import { getAuth, connectAuthEmulator } from "firebase/auth";
 import { getDatabase, connectDatabaseEmulator } from "firebase/database";
 import { getStorage, connectStorageEmulator } from "firebase/storage";
-import { initializeApp } from "firebase/app";
 
-// Your web app's Firebase configuration
+// Your Firebase configuration
 const firebaseConfig = {
   apiKey: "AIzaSyAxDdxu04GUsgrFuHF8nzi9Vn5W6w-UssQ",
   authDomain: "educonnect-66985.firebaseapp.com",
@@ -21,25 +20,22 @@ const firebaseConfig = {
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
 
-// Initialize Analytics only in the browser environment
-let analytics;
-if (typeof window !== "undefined") {
-  analytics = getAnalytics(app);
-}
+// Initialize Firestore
+export const db = getFirestore(app);
 
+// Initialize other Firebase services
 export const auth = getAuth(app);
 export const database = getDatabase(app);
 export const storage = getStorage(app);
 
-// Only connect to emulators if explicitly enabled via localStorage
+// Connect to emulators if enabled
 const useEmulators = localStorage.getItem("useFirebaseEmulators") === "true";
 
 if (useEmulators) {
-  // Connect to Firebase emulators
   connectAuthEmulator(auth, "http://localhost:9099");
   connectDatabaseEmulator(database, "localhost", 9000);
   connectStorageEmulator(storage, "localhost", 9199);
-
+  connectFirestoreEmulator(db, "localhost", 8080); // Firestore emulator
   console.log("Using Firebase local emulators");
 } else {
   console.log("Using Firebase production services");

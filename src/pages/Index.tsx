@@ -2,168 +2,211 @@
 import React from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
-import { BookOpen, Laptop, Users, MessageSquare, ChevronRight, Sparkles } from "lucide-react";
+import { BookOpen, Bot, Brain, Shield, Sparkles, Users, TestTube, GraduationCap, FileCode } from "lucide-react";
 
 const Index = () => {
   return (
-    <div className="flex flex-col min-h-screen bg-gradient-to-b from-indigo-50 to-white">
+    <div className="flex flex-col min-h-screen">
       <Header />
       <main className="flex-1">
-        {/* Simplified Hero Section */}
-        <section className="w-full py-12 md:py-24 lg:py-32 relative overflow-hidden">
-          <div className="absolute top-40 left-10 w-16 h-16 rounded-full bg-pink-200 opacity-50 animate-float"></div>
-          <div className="absolute bottom-20 right-20 w-20 h-20 rounded-full bg-indigo-200 opacity-50 animate-float" style={{ animationDelay: "1.5s" }}></div>
-          
-          <div className="container px-4 md:px-6 relative z-10">
-            <div className="grid gap-6 lg:grid-cols-2 lg:gap-12 items-center">
-              <div className="flex flex-col justify-center space-y-4">
-                <div className="inline-flex items-center px-3 py-1 rounded-full bg-indigo-100 text-indigo-600 mb-2 w-fit">
-                  <Sparkles className="h-4 w-4 mr-2" />
-                  <span className="text-sm font-medium">Learning Reimagined</span>
-                </div>
-                <h1 className="text-4xl font-bold tracking-tight sm:text-5xl md:text-6xl">
-                  Learning Made <span className="text-primary">Simple</span>
-                </h1>
-                <p className="text-lg text-muted-foreground max-w-[600px]">
-                  Connect, collaborate, and excel with our learning management system that makes education a joy.
-                </p>
-                <div className="flex flex-col sm:flex-row gap-3 pt-4">
-                  <Button asChild size="lg" className="bg-primary hover:bg-primary/90">
-                    <Link to="/login">
-                      Get Started
-                      <ChevronRight className="ml-2 h-4 w-4" />
-                    </Link>
-                  </Button>
-                  <Button asChild variant="outline" size="lg">
-                    <Link to="/courses">
-                      Explore Courses
-                    </Link>
-                  </Button>
-                </div>
-              </div>
-              <div className="flex items-center justify-center">
-                <div className="relative rounded-2xl overflow-hidden shadow-xl border-4 border-white bg-white transform rotate-1 transition-all duration-500 hover:rotate-0">
-                  <div className="aspect-video w-full max-w-[500px]">
-                    <svg 
-                      className="w-full h-full" 
-                      viewBox="0 0 600 400" 
-                      xmlns="http://www.w3.org/2000/svg"
-                    >
-                      {/* Background */}
-                      <rect width="600" height="400" fill="#f8fafc" />
-                      <circle cx="300" cy="200" r="180" fill="#7c3aed" opacity="0.1" />
-                      
-                      {/* Abstract shapes */}
-                      <circle cx="420" cy="120" r="60" fill="#8b5cf6" opacity="0.2" />
-                      <circle cx="180" cy="300" r="80" fill="#c4b5fd" opacity="0.3" />
-                      
-                      {/* Character */}
-                      <g transform="translate(240, 150)">
-                        {/* Head */}
-                        <circle cx="60" cy="60" r="50" fill="#7c3aed" />
-                        <circle cx="40" cy="50" r="8" fill="white" /> {/* Eye */}
-                        <circle cx="80" cy="50" r="8" fill="white" /> {/* Eye */}
-                        <path d="M40 80 Q 60 95 80 80" stroke="white" strokeWidth="3" fill="transparent" /> {/* Smile */}
-                        
-                        {/* Book */}
-                        <rect x="10" y="120" width="100" height="80" rx="5" fill="#c4b5fd" />
-                        <rect x="20" y="130" width="80" height="60" rx="3" fill="white" opacity="0.6" />
-                        <line x1="30" y1="145" x2="90" y2="145" stroke="#7c3aed" strokeWidth="2" />
-                        <line x1="30" y1="155" x2="70" y2="155" stroke="#7c3aed" strokeWidth="2" />
-                        <line x1="30" y1="165" x2="80" y2="165" stroke="#7c3aed" strokeWidth="2" />
-                      </g>
-                      
-                      {/* Floating elements */}
-                      <circle cx="150" cy="100" r="10" fill="#c4b5fd">
-                        <animate attributeName="cy" values="100;90;100" dur="3s" repeatCount="indefinite" />
-                      </circle>
-                      <circle cx="450" cy="300" r="12" fill="#8b5cf6">
-                        <animate attributeName="cy" values="300;290;300" dur="4s" repeatCount="indefinite" />
-                      </circle>
-                    </svg>
-                  </div>
-                </div>
+        <section className="py-12 md:py-24 lg:py-32 bg-gradient-to-b from-background to-muted">
+          <div className="container px-4 md:px-6">
+            <div className="flex flex-col items-center space-y-4 text-center">
+              <h1 className="text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl lg:text-6xl">
+                Modern Learning Platform
+              </h1>
+              <p className="max-w-[700px] text-muted-foreground md:text-xl">
+                Empower your educational journey with our comprehensive learning platform powered by AI
+              </p>
+              <div className="space-x-4">
+                <Link to="/login">
+                  <Button>Get Started</Button>
+                </Link>
+                <Link to="/courses">
+                  <Button variant="outline">Browse Courses</Button>
+                </Link>
               </div>
             </div>
           </div>
         </section>
 
-        {/* Streamlined Features Section */}
-        <section className="w-full py-12 md:py-24 bg-white">
+        {/* Features section */}
+        <section className="py-12 md:py-24 lg:py-32 bg-background">
           <div className="container px-4 md:px-6">
-            <div className="text-center mb-10">
-              <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">
-                Everything You Need
+            <div className="flex flex-col items-center space-y-4 text-center mb-12">
+              <h2 className="text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl">
+                Platform Features
               </h2>
-              <p className="mt-4 text-lg text-muted-foreground max-w-[700px] mx-auto">
-                Our platform offers comprehensive tools for both students and teachers.
+              <p className="max-w-[700px] text-muted-foreground md:text-xl">
+                Everything you need for effective learning and teaching
               </p>
             </div>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              {[
-                {
-                  icon: <BookOpen className="h-8 w-8 text-indigo-600" />,
-                  title: "Course Management",
-                  description: "Easily manage course materials and assignments."
-                },
-                {
-                  icon: <Laptop className="h-8 w-8 text-indigo-600" />,
-                  title: "Online Learning",
-                  description: "Access study materials from anywhere, anytime."
-                },
-                {
-                  icon: <Users className="h-8 w-8 text-indigo-600" />,
-                  title: "Collaboration",
-                  description: "Work together with classmates on group projects."
-                },
-                {
-                  icon: <MessageSquare className="h-8 w-8 text-indigo-600" />,
-                  title: "Communication",
-                  description: "Connect with teachers and peers through messaging."
-                }
-              ].map((feature, index) => (
-                <div
-                  key={index}
-                  className="flex flex-col items-center p-6 bg-white rounded-xl border border-indigo-100 shadow-sm hover:shadow-md transition-shadow"
-                >
-                  <div className="p-3 rounded-full bg-indigo-50 mb-4">
-                    {feature.icon}
-                  </div>
-                  <h3 className="text-xl font-bold mb-2">{feature.title}</h3>
-                  <p className="text-center text-muted-foreground">
-                    {feature.description}
-                  </p>
-                </div>
-              ))}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <FeatureCard
+                icon={<BookOpen className="h-10 w-10 text-primary" />}
+                title="Comprehensive Courses"
+                description="Access a wide range of courses with interactive content and assessments."
+              />
+              <FeatureCard
+                icon={<Shield className="h-10 w-10 text-primary" />}
+                title="Secure Platform"
+                description="Enterprise-grade security to protect your data and privacy."
+              />
+              <FeatureCard
+                icon={<Users className="h-10 w-10 text-primary" />}
+                title="Collaborative Learning"
+                description="Engage with peers and instructors through forums and live sessions."
+              />
             </div>
           </div>
         </section>
 
-        {/* Simple CTA Section */}
-        <section className="w-full py-12 md:py-24 bg-indigo-50">
+        {/* AI Features Section */}
+        <section className="py-12 md:py-24 lg:py-32 bg-purple-50 dark:bg-purple-950/20">
           <div className="container px-4 md:px-6">
-            <div className="flex flex-col lg:flex-row items-center justify-between gap-8">
-              <div className="space-y-4 max-w-[600px]">
-                <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">
-                  Ready to Transform Your Learning Experience?
-                </h2>
-                <p className="text-lg text-muted-foreground">
-                  Join EduConnect today and discover a new way to learn and collaborate.
-                </p>
+            <div className="flex flex-col items-center space-y-4 text-center mb-12">
+              <div className="bg-purple-100 dark:bg-purple-900/30 px-3 py-1 rounded-full text-purple-800 dark:text-purple-300 text-sm font-medium inline-flex items-center gap-1">
+                <Sparkles className="h-3.5 w-3.5" />
+                AI-Powered
               </div>
-              <Button asChild size="lg" className="bg-primary hover:bg-primary/90">
-                <Link to="/auth">
-                  Sign Up Now
+              <h2 className="text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl">
+                Advanced AI Features
+              </h2>
+              <p className="max-w-[700px] text-muted-foreground md:text-xl">
+                Cutting-edge artificial intelligence to enhance your educational experience
+              </p>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8">
+              <Card className="bg-background/80 backdrop-blur-sm border border-purple-200 dark:border-purple-800/30 shadow-md hover:shadow-lg transition-all">
+                <CardHeader>
+                  <div className="flex items-center gap-2 mb-2">
+                    <div className="bg-purple-100 dark:bg-purple-900/50 p-2 rounded-full">
+                      <Bot className="h-6 w-6 text-purple-800 dark:text-purple-300" />
+                    </div>
+                    <CardTitle>AI Content Checker</CardTitle>
+                  </div>
+                  <CardDescription>
+                    For administrators and educators to validate the authenticity of student submissions
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-muted-foreground">
+                    Detect AI-generated content and check for plagiarism in student submissions with our advanced machine learning algorithms.
+                  </p>
+                </CardContent>
+                <CardFooter>
+                  <Link to="/admin/ai-checker" className="w-full">
+                    <Button variant="outline" className="w-full">
+                      <Bot className="h-4 w-4 mr-2" />
+                      Try AI Checker
+                    </Button>
+                  </Link>
+                </CardFooter>
+              </Card>
+
+              <Card className="bg-background/80 backdrop-blur-sm border border-purple-200 dark:border-purple-800/30 shadow-md hover:shadow-lg transition-all">
+                <CardHeader>
+                  <div className="flex items-center gap-2 mb-2">
+                    <div className="bg-purple-100 dark:bg-purple-900/50 p-2 rounded-full">
+                      <Brain className="h-6 w-6 text-purple-800 dark:text-purple-300" />
+                    </div>
+                    <CardTitle>AI Study Planner</CardTitle>
+                  </div>
+                  <CardDescription>
+                    For students to optimize their learning schedule and improve productivity
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-muted-foreground">
+                    Create personalized study plans based on your courses, learning style, and schedule using our intelligent AI algorithms.
+                  </p>
+                </CardContent>
+                <CardFooter>
+                  <Link to="/student/ai-planner" className="w-full">
+                    <Button variant="outline" className="w-full">
+                      <Brain className="h-4 w-4 mr-2" />
+                      Try AI Planner
+                    </Button>
+                  </Link>
+                </CardFooter>
+              </Card>
+
+              <Card className="bg-background/80 backdrop-blur-sm border border-purple-200 dark:border-purple-800/30 shadow-md hover:shadow-lg transition-all">
+                <CardHeader>
+                  <div className="flex items-center gap-2 mb-2">
+                    <div className="bg-purple-100 dark:bg-purple-900/50 p-2 rounded-full">
+                      <TestTube className="h-6 w-6 text-purple-800 dark:text-purple-300" />
+                    </div>
+                    <CardTitle>AI Quiz Generator</CardTitle>
+                  </div>
+                  <CardDescription>
+                    For students to test their knowledge with AI-generated quizzes
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-muted-foreground">
+                    Generate custom quizzes based on your learning materials and get instant feedback on your answers using DeepSeek AI.
+                  </p>
+                </CardContent>
+                <CardFooter>
+                  <Link to="/student/quiz-generator" className="w-full">
+                    <Button variant="outline" className="w-full">
+                      <TestTube className="h-4 w-4 mr-2" />
+                      Try AI Quizzes
+                    </Button>
+                  </Link>
+                </CardFooter>
+              </Card>
+            </div>
+          </div>
+        </section>
+
+        {/* CTA section */}
+        <section className="py-12 md:py-24 lg:py-32 bg-muted">
+          <div className="container px-4 md:px-6 relative z-10">
+            <div className="flex flex-col items-center space-y-4 text-center">
+              <h2 className="text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl">
+                Ready to Start Learning?
+              </h2>
+              <p className="max-w-[700px] text-muted-foreground md:text-xl">
+                Join thousands of students and educators on our platform
+              </p>
+              <div className="space-x-4">
+                <Link to="/login">
+                  <Button size="lg">Get Started Today</Button>
                 </Link>
-              </Button>
+              </div>
             </div>
           </div>
         </section>
       </main>
       <Footer />
+    </div>
+  );
+};
+
+const FeatureCard = ({ icon, title, description }: { icon: React.ReactNode; title: string; description: string }) => {
+  return (
+    <div className="flex flex-col items-center space-y-4 text-center p-6 border rounded-lg bg-card shadow-sm">
+      <div className="bg-primary/10 p-3 rounded-full">{icon}</div>
+      <h3 className="text-xl font-bold">{title}</h3>
+      <p className="text-muted-foreground">{description}</p>
+    </div>
+  );
+};
+
+const CheckItem = ({ children }: { children: React.ReactNode }) => {
+  return (
+    <div className="flex items-center gap-2">
+      <div className="rounded-full bg-green-500/10 p-1">
+        <svg className="h-3 w-3 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+        </svg>
+      </div>
+      <span className="text-sm font-medium">{children}</span>
     </div>
   );
 };
