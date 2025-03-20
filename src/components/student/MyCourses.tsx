@@ -1,34 +1,77 @@
 
-import React from "react";
-import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import React, { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Loader2, BookOpen, Calendar, Clock, Play } from "lucide-react";
+import { ref, get, query, orderByChild, equalTo } from "firebase/database";
+import { database } from "@/firebase";
 
 export const MyCourses = () => {
   const { user } = useAuth();
+  const [enrollments, setEnrollments] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
   
-  const { data: enrollments, isLoading: isEnrollmentsLoading } = useQuery({
-    queryKey: ["student-enrollments", user?.id],
-    queryFn: async () => {
-      if (!user?.id) return [];
+  useEffect(() => {
+    const fetchEnrollments = async () => {
+      if (!user?.id) {
+        setIsLoading(false);
+        return;
+      }
       
-      const { data, error } = await supabase
-        .from('enrollments')
-        .select('*, courses(*)')
-        .eq('user_id', user.id);
+      try {
+        // Get enrollments from Firebase
+        const enrollmentsRef = query(
+          ref(database, 'enrollments'),
+          orderByChild('user_id'),
+          equalTo(user.id)
+        );
         
-      if (error) throw error;
-      return data || [];
-    },
-    enabled: !!user?.id
-  });
+        const snapshot = await get(enrollmentsRef);
+        if (!snapshot.exists()) {
+          setEnrollments([]);
+          setIsLoading(false);
+          return;
+        }
+        
+        const enrollmentData = [];
+        snapshot.forEach((childSnapshot) => {
+          enrollmentData.push({
+            id: childSnapshot.key,
+            ...childSnapshot.val()
+          });
+        });
+        
+        // Fetch course details for each enrollment
+        const enrollmentsWithCourses = await Promise.all(
+          enrollmentData.map(async (enrollment) => {
+            const courseRef = ref(database, `courses/${enrollment.course_id}`);
+            const courseSnapshot = await get(courseRef);
+            
+            if (courseSnapshot.exists()) {
+              return {
+                ...enrollment,
+                courses: courseSnapshot.val()
+              };
+            }
+            return enrollment;
+          })
+        );
+        
+        setEnrollments(enrollmentsWithCourses);
+      } catch (error) {
+        console.error("Error fetching enrollments:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    fetchEnrollments();
+  }, [user?.id]);
 
-  if (isEnrollmentsLoading) {
+  if (isLoading) {
     return (
       <div className="flex justify-center py-8">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />

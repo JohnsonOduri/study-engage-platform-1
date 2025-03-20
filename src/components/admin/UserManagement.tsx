@@ -1,7 +1,5 @@
-
 import React, { useState, useEffect } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 import { User, UserRole } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,8 +10,19 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
 import { Loader2, Search, Trash, Pencil, Plus, User as UserIcon } from "lucide-react";
 import { toast } from "sonner";
+import { 
+  getAuth, 
+  createUserWithEmailAndPassword, 
+  updateProfile, 
+  deleteUser,
+  listUsers,
+  updateUser
+} from "firebase/auth";
+import { ref, set, get, remove, update } from "firebase/database";
+import { database } from "@/firebase";
 
 export const UserManagement = () => {
+  const { user: currentUser } = useAuth();
   const [search, setSearch] = useState("");
   const [isAddUserOpen, setIsAddUserOpen] = useState(false);
   const [isEditUserOpen, setIsEditUserOpen] = useState(false);
@@ -25,37 +34,45 @@ export const UserManagement = () => {
     password: "",
     role: "student" as UserRole
   });
+  const [users, setUsers] = useState<User[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const { data: users, isLoading, refetch } = useQuery({
-    queryKey: ["admin-users"],
-    queryFn: async () => {
-      const { data: { users: authUsers }, error: authError } = await supabase.auth.admin.listUsers();
-      
-      if (authError) {
-        throw authError;
-      }
-      
-      const { data: profiles, error: profilesError } = await supabase
-        .from('profiles')
-        .select('*');
+  useEffect(() => {
+    const fetchUsers = async () => {
+      setIsLoading(true);
+      try {
+        const usersRef = ref(database, 'users');
+        const snapshot = await get(usersRef);
         
-      if (profilesError) {
-        throw profilesError;
+        if (!snapshot.exists()) {
+          setUsers([]);
+          setIsLoading(false);
+          return;
+        }
+        
+        const usersData: User[] = [];
+        snapshot.forEach((childSnapshot) => {
+          const userData = childSnapshot.val();
+          usersData.push({
+            id: childSnapshot.key,
+            name: userData.name || '',
+            email: userData.email || '',
+            role: userData.role as UserRole,
+            avatar: userData.avatar || ''
+          });
+        });
+        
+        setUsers(usersData);
+      } catch (error) {
+        console.error("Error fetching users:", error);
+        toast.error("Failed to load users");
+      } finally {
+        setIsLoading(false);
       }
-      
-      // Combine auth users with profile data
-      return authUsers.map(authUser => {
-        const profile = profiles.find(p => p.id === authUser.id);
-        return {
-          id: authUser.id,
-          name: profile?.name || authUser.email?.split('@')[0] || 'Unknown',
-          email: authUser.email || '',
-          role: (profile?.role || 'student') as UserRole,
-          avatar: profile?.avatar_url
-        };
-      }) as User[];
-    }
-  });
+    };
+    
+    fetchUsers();
+  }, []);
 
   const filteredUsers = users?.filter(user => 
     user.name.toLowerCase().includes(search.toLowerCase()) || 
@@ -64,20 +81,26 @@ export const UserManagement = () => {
 
   const handleAddUser = async () => {
     try {
-      // Create user in Supabase Auth
-      const { data, error } = await supabase.auth.admin.createUser({
-        email: newUser.email,
-        password: newUser.password,
-        email_confirm: true,
-        user_metadata: { 
-          name: newUser.name,
-          role: newUser.role
-        }
+      const auth = getAuth();
+      
+      const userCredential = await createUserWithEmailAndPassword(
+        auth, 
+        newUser.email, 
+        newUser.password
+      );
+      
+      const firebaseUser = userCredential.user;
+      
+      await updateProfile(firebaseUser, {
+        displayName: newUser.name
       });
       
-      if (error) throw error;
-      
-      // The profile should be created automatically via the trigger
+      await set(ref(database, `users/${firebaseUser.uid}`), {
+        name: newUser.name,
+        email: newUser.email,
+        role: newUser.role,
+        createdAt: new Date().toISOString()
+      });
       
       toast.success("User created successfully");
       setIsAddUserOpen(false);
@@ -87,7 +110,14 @@ export const UserManagement = () => {
         password: "",
         role: "student"
       });
-      refetch();
+      
+      setUsers(prev => [...prev, {
+        id: firebaseUser.uid,
+        name: newUser.name,
+        email: newUser.email,
+        role: newUser.role,
+        avatar: ''
+      }]);
     } catch (error: any) {
       toast.error(error.message || "Failed to create user");
       console.error("Create user error:", error);
@@ -98,29 +128,18 @@ export const UserManagement = () => {
     if (!selectedUser) return;
     
     try {
-      // Update user metadata in auth
-      const { error: authError } = await supabase.auth.admin.updateUserById(
-        selectedUser.id,
-        { user_metadata: { name: selectedUser.name, role: selectedUser.role } }
-      );
-      
-      if (authError) throw authError;
-      
-      // Update profile in database
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .update({ 
-          name: selectedUser.name,
-          role: selectedUser.role,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', selectedUser.id);
-        
-      if (profileError) throw profileError;
+      await update(ref(database, `users/${selectedUser.id}`), {
+        name: selectedUser.name,
+        role: selectedUser.role,
+        updatedAt: new Date().toISOString()
+      });
       
       toast.success("User updated successfully");
       setIsEditUserOpen(false);
-      refetch();
+      
+      setUsers(prev => prev.map(user => 
+        user.id === selectedUser.id ? selectedUser : user
+      ));
     } catch (error: any) {
       toast.error(error.message || "Failed to update user");
       console.error("Update user error:", error);
@@ -131,13 +150,12 @@ export const UserManagement = () => {
     if (!selectedUser) return;
     
     try {
-      const { error } = await supabase.auth.admin.deleteUser(selectedUser.id);
-      
-      if (error) throw error;
+      await remove(ref(database, `users/${selectedUser.id}`));
       
       toast.success("User deleted successfully");
       setIsDeleteUserOpen(false);
-      refetch();
+      
+      setUsers(prev => prev.filter(user => user.id !== selectedUser.id));
     } catch (error: any) {
       toast.error(error.message || "Failed to delete user");
       console.error("Delete user error:", error);
@@ -237,7 +255,6 @@ export const UserManagement = () => {
         </div>
       )}
 
-      {/* Add User Dialog */}
       <Dialog open={isAddUserOpen} onOpenChange={setIsAddUserOpen}>
         <DialogContent>
           <DialogHeader>
@@ -306,7 +323,6 @@ export const UserManagement = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Edit User Dialog */}
       <Dialog open={isEditUserOpen} onOpenChange={setIsEditUserOpen}>
         <DialogContent>
           <DialogHeader>
@@ -366,7 +382,6 @@ export const UserManagement = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Delete User Dialog */}
       <Dialog open={isDeleteUserOpen} onOpenChange={setIsDeleteUserOpen}>
         <DialogContent>
           <DialogHeader>
@@ -385,3 +400,4 @@ export const UserManagement = () => {
     </div>
   );
 };
+

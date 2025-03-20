@@ -1,5 +1,0 @@
-
-# This configuration file is used by Supabase Edge Functions.
-
-[functions."generate-quiz"]
-verify_jwt = false

@@ -1,7 +1,5 @@
-
-import React, { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import React, { useState, useEffect } from "react";
+import { useAuth } from "@/contexts/AuthContext";
 import { Course, User } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,8 +11,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Loader2, Search, Trash, Pencil, Plus, BookOpen, Calendar, Clock, CheckCircle, XCircle } from "lucide-react";
 import { toast } from "sonner";
+import { ref, set, get, remove, update, query, orderByChild, equalTo } from "firebase/database";
+import { database } from "@/firebase";
 
 export const CourseManagement = () => {
+  const { user } = useAuth();
   const [search, setSearch] = useState("");
   const [isAddCourseOpen, setIsAddCourseOpen] = useState(false);
   const [isEditCourseOpen, setIsEditCourseOpen] = useState(false);
@@ -28,38 +29,70 @@ export const CourseManagement = () => {
     prerequisites: [],
     is_archived: false
   });
+  const [courses, setCourses] = useState<Course[]>([]);
+  const [instructors, setInstructors] = useState<User[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const { data: courses, isLoading: isCoursesLoading, refetch } = useQuery({
-    queryKey: ["admin-courses"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('courses')
-        .select('*');
+  useEffect(() => {
+    const fetchData = async () => {
+      setIsLoading(true);
+      try {
+        // Fetch courses
+        const coursesRef = ref(database, 'courses');
+        const coursesSnapshot = await get(coursesRef);
         
-      if (error) throw error;
-      return data as Course[];
-    }
-  });
-
-  const { data: instructors, isLoading: isInstructorsLoading } = useQuery({
-    queryKey: ["admin-instructors"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('role', 'teacher');
+        const coursesData: Course[] = [];
+        if (coursesSnapshot.exists()) {
+          coursesSnapshot.forEach((childSnapshot) => {
+            const courseData = childSnapshot.val();
+            coursesData.push({
+              id: childSnapshot.key,
+              title: courseData.title,
+              description: courseData.description,
+              instructor_id: courseData.instructor_id,
+              category: courseData.category,
+              prerequisites: courseData.prerequisites || [],
+              is_archived: courseData.is_archived || false,
+              created_at: courseData.created_at,
+              updated_at: courseData.updated_at
+            });
+          });
+        }
+        setCourses(coursesData);
         
-      if (error) throw error;
-      
-      return (data || []).map(profile => ({
-        id: profile.id,
-        name: profile.name,
-        role: profile.role as User['role'],
-        avatar: profile.avatar_url
-        // Note: We're not trying to access email anymore since it doesn't exist in the profiles table
-      })) as User[];
-    }
-  });
+        // Fetch instructors (users with teacher role)
+        const teachersRef = query(
+          ref(database, 'users'),
+          orderByChild('role'),
+          equalTo('teacher')
+        );
+        
+        const teachersSnapshot = await get(teachersRef);
+        
+        const teachersData: User[] = [];
+        if (teachersSnapshot.exists()) {
+          teachersSnapshot.forEach((childSnapshot) => {
+            const userData = childSnapshot.val();
+            teachersData.push({
+              id: childSnapshot.key,
+              name: userData.name,
+              email: userData.email,
+              role: userData.role as User['role'],
+              avatar: userData.avatar || ''
+            });
+          });
+        }
+        setInstructors(teachersData);
+      } catch (error) {
+        console.error("Error fetching data:", error);
+        toast.error("Failed to load data");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    fetchData();
+  }, []);
 
   const filteredCourses = courses?.filter(course => 
     course.title.toLowerCase().includes(search.toLowerCase()) || 
@@ -73,22 +106,38 @@ export const CourseManagement = () => {
 
   const handleAddCourse = async () => {
     try {
-      const { data, error } = await supabase
-        .from('courses')
-        .insert([{
-          title: newCourse.title,
-          description: newCourse.description,
-          instructor_id: newCourse.instructor_id,
-          category: newCourse.category,
-          prerequisites: newCourse.prerequisites || [],
-          is_archived: false
-        }])
-        .select();
-        
-      if (error) throw error;
+      // Generate unique ID
+      const courseId = `course_${Date.now()}`;
+      
+      // Save to Firebase
+      await set(ref(database, `courses/${courseId}`), {
+        title: newCourse.title,
+        description: newCourse.description,
+        instructor_id: newCourse.instructor_id,
+        category: newCourse.category,
+        prerequisites: newCourse.prerequisites || [],
+        is_archived: false,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      });
       
       toast.success("Course created successfully");
       setIsAddCourseOpen(false);
+      
+      // Add to local state
+      setCourses(prev => [...prev, {
+        id: courseId,
+        title: newCourse.title!,
+        description: newCourse.description,
+        instructor_id: newCourse.instructor_id!,
+        category: newCourse.category,
+        prerequisites: newCourse.prerequisites || [],
+        is_archived: false,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      }]);
+      
+      // Reset form
       setNewCourse({
         title: "",
         description: "",
@@ -97,7 +146,6 @@ export const CourseManagement = () => {
         prerequisites: [],
         is_archived: false
       });
-      refetch();
     } catch (error: any) {
       toast.error(error.message || "Failed to create course");
       console.error("Create course error:", error);
@@ -108,24 +156,24 @@ export const CourseManagement = () => {
     if (!selectedCourse) return;
     
     try {
-      const { error } = await supabase
-        .from('courses')
-        .update({ 
-          title: selectedCourse.title,
-          description: selectedCourse.description,
-          instructor_id: selectedCourse.instructor_id,
-          category: selectedCourse.category,
-          prerequisites: selectedCourse.prerequisites || [],
-          is_archived: selectedCourse.is_archived,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', selectedCourse.id);
-        
-      if (error) throw error;
+      // Update in Firebase
+      await update(ref(database, `courses/${selectedCourse.id}`), {
+        title: selectedCourse.title,
+        description: selectedCourse.description,
+        instructor_id: selectedCourse.instructor_id,
+        category: selectedCourse.category,
+        prerequisites: selectedCourse.prerequisites || [],
+        is_archived: selectedCourse.is_archived,
+        updated_at: new Date().toISOString()
+      });
       
       toast.success("Course updated successfully");
       setIsEditCourseOpen(false);
-      refetch();
+      
+      // Update in local state
+      setCourses(prev => prev.map(course => 
+        course.id === selectedCourse.id ? selectedCourse : course
+      ));
     } catch (error: any) {
       toast.error(error.message || "Failed to update course");
       console.error("Update course error:", error);
@@ -136,16 +184,14 @@ export const CourseManagement = () => {
     if (!selectedCourse) return;
     
     try {
-      const { error } = await supabase
-        .from('courses')
-        .delete()
-        .eq('id', selectedCourse.id);
-        
-      if (error) throw error;
+      // Delete from Firebase
+      await remove(ref(database, `courses/${selectedCourse.id}`));
       
       toast.success("Course deleted successfully");
       setIsDeleteCourseOpen(false);
-      refetch();
+      
+      // Remove from local state
+      setCourses(prev => prev.filter(course => course.id !== selectedCourse.id));
     } catch (error: any) {
       toast.error(error.message || "Failed to delete course");
       console.error("Delete course error:", error);
@@ -154,25 +200,23 @@ export const CourseManagement = () => {
 
   const handleArchiveCourse = async (course: Course, archive: boolean) => {
     try {
-      const { error } = await supabase
-        .from('courses')
-        .update({ 
-          is_archived: archive,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', course.id);
-        
-      if (error) throw error;
+      // Update in Firebase
+      await update(ref(database, `courses/${course.id}`), {
+        is_archived: archive,
+        updated_at: new Date().toISOString()
+      });
       
       toast.success(`Course ${archive ? 'archived' : 'unarchived'} successfully`);
-      refetch();
+      
+      // Update in local state
+      setCourses(prev => prev.map(c => 
+        c.id === course.id ? {...c, is_archived: archive} : c
+      ));
     } catch (error: any) {
       toast.error(error.message || `Failed to ${archive ? 'archive' : 'unarchive'} course`);
       console.error("Archive course error:", error);
     }
   };
-
-  const isLoading = isCoursesLoading || isInstructorsLoading;
 
   return (
     <div className="space-y-6">
@@ -446,4 +490,3 @@ export const CourseManagement = () => {
     </div>
   );
 };
-

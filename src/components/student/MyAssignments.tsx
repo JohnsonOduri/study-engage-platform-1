@@ -1,65 +1,112 @@
 
-import React, { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import React, { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Loader2, FileText, Clock, CheckCircle2, AlertCircle } from "lucide-react";
+import { ref, get, query, orderByChild, equalTo } from "firebase/database";
+import { database } from "@/firebase";
 
 export const MyAssignments = () => {
   const { user } = useAuth();
   const [filter, setFilter] = useState<'all' | 'pending' | 'completed'>('all');
+  const [assignments, setAssignments] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
   
-  const { data: assignments, isLoading } = useQuery({
-    queryKey: ["student-assignments", user?.id],
-    queryFn: async () => {
-      if (!user?.id) return [];
+  useEffect(() => {
+    const fetchAssignments = async () => {
+      if (!user?.id) {
+        setIsLoading(false);
+        return;
+      }
       
-      // First get all courses the student is enrolled in
-      const { data: enrollments, error: enrollmentError } = await supabase
-        .from('enrollments')
-        .select('course_id')
-        .eq('user_id', user.id);
+      try {
+        // First get enrollments to find the courses the student is enrolled in
+        const enrollmentsRef = query(
+          ref(database, 'enrollments'),
+          orderByChild('user_id'),
+          equalTo(user.id)
+        );
         
-      if (enrollmentError) throw enrollmentError;
-      
-      if (!enrollments || enrollments.length === 0) return [];
-      
-      const courseIds = enrollments.map(e => e.course_id);
-      
-      // Then get all assignments for those courses
-      const { data: assignmentsData, error: assignmentsError } = await supabase
-        .from('assignments')
-        .select('*, courses(title)')
-        .in('course_id', courseIds)
-        .order('due_date', { ascending: true });
+        const enrollmentSnapshot = await get(enrollmentsRef);
+        if (!enrollmentSnapshot.exists()) {
+          setAssignments([]);
+          setIsLoading(false);
+          return;
+        }
         
-      if (assignmentsError) throw assignmentsError;
-      
-      // Get student's submissions
-      const { data: submissions, error: submissionsError } = await supabase
-        .from('submissions')
-        .select('*')
-        .eq('user_id', user.id);
+        const courseIds = [];
+        enrollmentSnapshot.forEach((childSnapshot) => {
+          courseIds.push(childSnapshot.val().course_id);
+        });
         
-      if (submissionsError) throw submissionsError;
-      
-      // Combine assignments with submission status
-      return (assignmentsData || []).map(assignment => {
-        const submission = submissions?.find(s => s.assignment_id === assignment.id);
-        return {
-          ...assignment,
-          submitted: !!submission,
-          submission: submission,
-          course_name: assignment.courses?.title || 'Unknown Course'
-        };
-      });
-    },
-    enabled: !!user?.id
-  });
+        // Get all assignments for these courses
+        const assignmentsData = [];
+        for (const courseId of courseIds) {
+          const assignmentsRef = query(
+            ref(database, 'assignments'),
+            orderByChild('course_id'),
+            equalTo(courseId)
+          );
+          
+          const assignmentSnapshot = await get(assignmentsRef);
+          if (assignmentSnapshot.exists()) {
+            assignmentSnapshot.forEach((childSnapshot) => {
+              // Get course details
+              const courseRef = ref(database, `courses/${courseId}`);
+              get(courseRef).then((courseSnapshot) => {
+                if (courseSnapshot.exists()) {
+                  assignmentsData.push({
+                    id: childSnapshot.key,
+                    ...childSnapshot.val(),
+                    course_name: courseSnapshot.val().title
+                  });
+                }
+              });
+            });
+          }
+        }
+        
+        // Get submissions for the user
+        const submissionsRef = query(
+          ref(database, 'submissions'),
+          orderByChild('user_id'),
+          equalTo(user.id)
+        );
+        
+        const submissionsSnapshot = await get(submissionsRef);
+        const submissions = [];
+        if (submissionsSnapshot.exists()) {
+          submissionsSnapshot.forEach((childSnapshot) => {
+            submissions.push({
+              id: childSnapshot.key,
+              ...childSnapshot.val()
+            });
+          });
+        }
+        
+        // Combine assignments with submission status
+        const assignmentsWithSubmissions = assignmentsData.map(assignment => {
+          const submission = submissions.find(s => s.assignment_id === assignment.id);
+          return {
+            ...assignment,
+            submitted: !!submission,
+            submission: submission || null
+          };
+        });
+        
+        setAssignments(assignmentsWithSubmissions);
+      } catch (error) {
+        console.error("Error fetching assignments:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    fetchAssignments();
+  }, [user?.id]);
 
   const filteredAssignments = assignments?.filter(assignment => {
     if (filter === 'all') return true;
