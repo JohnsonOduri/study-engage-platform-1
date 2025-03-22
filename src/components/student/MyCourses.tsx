@@ -1,48 +1,54 @@
 
 import React, { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
-import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
-import { Loader2, BookOpen, Calendar, Clock, Play } from "lucide-react";
+import { toast } from "sonner";
+import { Loader2, Plus } from "lucide-react";
 import { ref, get, query, orderByChild, equalTo } from "firebase/database";
 import { database } from "@/firebase";
+import { CourseGrid } from "./CourseGrid";
+import { JoinCourseDialog } from "./JoinCourseDialog";
+import { CourseDetailView } from "./CourseDetailView";
 
 export const MyCourses = () => {
   const { user } = useAuth();
-  const [enrollments, setEnrollments] = useState([]);
+  const [enrollments, setEnrollments] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [showJoinDialog, setShowJoinDialog] = useState(false);
+  const [selectedCourse, setSelectedCourse] = useState<any>(null);
+  const [courseAssignments, setCourseAssignments] = useState<any[]>([]);
+  const [courseAttendance, setCourseAttendance] = useState<any[]>([]);
   
   useEffect(() => {
-    const fetchEnrollments = async () => {
+    const fetchData = async () => {
       if (!user?.id) {
         setIsLoading(false);
         return;
       }
       
       try {
-        // Get enrollments from Firebase
+        setIsLoading(true);
+        
+        // Get enrollments
         const enrollmentsRef = query(
           ref(database, 'enrollments'),
-          orderByChild('user_id'),
+          orderByChild('student_id'),
           equalTo(user.id)
         );
         
-        const snapshot = await get(enrollmentsRef);
-        if (!snapshot.exists()) {
-          setEnrollments([]);
-          setIsLoading(false);
-          return;
-        }
+        const enrollmentsSnapshot = await get(enrollmentsRef);
         
-        const enrollmentData = [];
-        snapshot.forEach((childSnapshot) => {
-          enrollmentData.push({
-            id: childSnapshot.key,
-            ...childSnapshot.val()
+        const enrollmentData: any[] = [];
+        
+        if (enrollmentsSnapshot.exists()) {
+          enrollmentsSnapshot.forEach((childSnapshot) => {
+            const data = childSnapshot.val();
+            enrollmentData.push({
+              id: childSnapshot.key,
+              ...data
+            });
           });
-        });
+        }
         
         // Fetch course details for each enrollment
         const enrollmentsWithCourses = await Promise.all(
@@ -51,9 +57,24 @@ export const MyCourses = () => {
             const courseSnapshot = await get(courseRef);
             
             if (courseSnapshot.exists()) {
+              const courseData = courseSnapshot.val();
+              // Get instructor info
+              let instructorName = "Unknown Instructor";
+              if (courseData.instructor_id) {
+                const instructorRef = ref(database, `users/${courseData.instructor_id}`);
+                const instructorSnapshot = await get(instructorRef);
+                if (instructorSnapshot.exists()) {
+                  instructorName = instructorSnapshot.val().name || "Unknown Instructor";
+                }
+              }
+              
               return {
                 ...enrollment,
-                courses: courseSnapshot.val()
+                course: {
+                  id: enrollment.course_id,
+                  ...courseData,
+                  instructor_name: instructorName
+                }
               };
             }
             return enrollment;
@@ -62,14 +83,99 @@ export const MyCourses = () => {
         
         setEnrollments(enrollmentsWithCourses);
       } catch (error) {
-        console.error("Error fetching enrollments:", error);
+        console.error("Error fetching courses:", error);
+        toast.error("Failed to load courses");
       } finally {
         setIsLoading(false);
       }
     };
     
-    fetchEnrollments();
+    fetchData();
   }, [user?.id]);
+
+  const handleCourseSelect = async (enrollment: any) => {
+    setSelectedCourse(enrollment);
+    
+    // Fetch assignments for this course
+    try {
+      const assignmentsRef = query(
+        ref(database, 'assignments'),
+        orderByChild('course_id'),
+        equalTo(enrollment.course.id)
+      );
+      
+      const assignmentsSnapshot = await get(assignmentsRef);
+      const assignmentsData: any[] = [];
+      
+      if (assignmentsSnapshot.exists()) {
+        assignmentsSnapshot.forEach((childSnapshot) => {
+          assignmentsData.push({
+            id: childSnapshot.key,
+            ...childSnapshot.val()
+          });
+        });
+      }
+      
+      // Get submissions for each assignment
+      const submissionsRef = query(
+        ref(database, 'submissions'),
+        orderByChild('user_id'),
+        equalTo(user?.id)
+      );
+      
+      const submissionsSnapshot = await get(submissionsRef);
+      const submissions: any[] = [];
+      
+      if (submissionsSnapshot.exists()) {
+        submissionsSnapshot.forEach((childSnapshot) => {
+          submissions.push({
+            id: childSnapshot.key,
+            ...childSnapshot.val()
+          });
+        });
+      }
+      
+      // Attach submissions to assignments
+      const assignmentsWithSubmissions = assignmentsData.map(assignment => {
+        const submission = submissions.find(s => s.assignment_id === assignment.id);
+        return {
+          ...assignment,
+          submitted: !!submission,
+          submission: submission || null
+        };
+      });
+      
+      setCourseAssignments(assignmentsWithSubmissions);
+      
+      // Fetch attendance for this course
+      const attendanceRef = query(
+        ref(database, 'attendance'),
+        orderByChild('student_id'),
+        equalTo(user?.id)
+      );
+      
+      const attendanceSnapshot = await get(attendanceRef);
+      const attendanceData: any[] = [];
+      
+      if (attendanceSnapshot.exists()) {
+        attendanceSnapshot.forEach((childSnapshot) => {
+          const data = childSnapshot.val();
+          if (data.course_id === enrollment.course.id) {
+            attendanceData.push({
+              id: childSnapshot.key,
+              ...data
+            });
+          }
+        });
+      }
+      
+      setCourseAttendance(attendanceData);
+      
+    } catch (error) {
+      console.error("Error fetching course details:", error);
+      toast.error("Failed to load course details");
+    }
+  };
 
   if (isLoading) {
     return (
@@ -79,84 +185,41 @@ export const MyCourses = () => {
     );
   }
 
-  if (!enrollments || enrollments.length === 0) {
+  if (selectedCourse) {
     return (
-      <div className="text-center py-12">
-        <BookOpen className="h-12 w-12 mx-auto text-muted-foreground" />
-        <h3 className="mt-4 text-lg font-medium">No Courses Found</h3>
-        <p className="mt-2 text-muted-foreground">
-          You are not enrolled in any courses yet.
-        </p>
-        <Button className="mt-4">Browse Courses</Button>
-      </div>
+      <CourseDetailView
+        selectedCourse={selectedCourse}
+        courseAssignments={courseAssignments}
+        courseAttendance={courseAttendance}
+        onBack={() => setSelectedCourse(null)}
+        onAssignmentsChange={setCourseAssignments}
+      />
     );
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold">My Courses</h2>
-        <Button>Browse More Courses</Button>
-      </div>
-      
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {enrollments.map((enrollment) => (
-          <CourseCard 
-            key={enrollment.id} 
-            enrollment={enrollment} 
-          />
-        ))}
-      </div>
-    </div>
-  );
-};
-
-const CourseCard = ({ enrollment }: { enrollment: any }) => {
-  const course = enrollment.courses;
-  
-  // Calculate a mock progress percentage between 0-100
-  const progressPercentage = enrollment.completed ? 100 : Math.floor(Math.random() * 100);
-  
-  return (
-    <Card className="overflow-hidden">
-      <CardContent className="p-0">
-        <div className="relative h-40 bg-gradient-to-r from-blue-500 to-purple-500">
-          <div className="absolute inset-0 flex items-center justify-center">
-            <BookOpen className="h-16 w-16 text-white opacity-25" />
-          </div>
-          <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/70 to-transparent">
-            <Badge className="mb-2">{course.category || 'General'}</Badge>
-            <h3 className="text-lg font-semibold text-white truncate">{course.title}</h3>
-          </div>
-        </div>
-        
-        <div className="p-4">
-          <div className="flex items-center justify-between mb-2">
-            <div className="flex items-center space-x-2">
-              <Calendar className="h-4 w-4 text-muted-foreground" />
-              <span className="text-sm text-muted-foreground">Started {new Date(enrollment.enrolled_at).toLocaleDateString()}</span>
-            </div>
-            <div className="flex items-center space-x-2">
-              <Clock className="h-4 w-4 text-muted-foreground" />
-              <span className="text-sm text-muted-foreground">12 weeks</span>
-            </div>
-          </div>
-          
-          <div className="mt-4">
-            <div className="flex justify-between mb-1 text-sm">
-              <span>Progress</span>
-              <span>{progressPercentage}%</span>
-            </div>
-            <Progress value={progressPercentage} className="h-2" />
-          </div>
-          
-          <Button className="w-full mt-4 gap-2">
-            <Play className="h-4 w-4" />
-            {progressPercentage === 0 ? 'Start Course' : 
-             progressPercentage === 100 ? 'Review Course' : 'Continue Learning'}
+    <div className="space-y-8">
+      {/* My Enrolled Courses Section */}
+      <div className="space-y-6">
+        <div className="flex justify-between items-center">
+          <h2 className="text-2xl font-bold">My Courses</h2>
+          <Button onClick={() => setShowJoinDialog(true)}>
+            <Plus className="h-4 w-4 mr-2" />
+            Join Course
           </Button>
         </div>
-      </CardContent>
-    </Card>
+        
+        <CourseGrid 
+          enrollments={enrollments} 
+          onCourseSelect={handleCourseSelect} 
+        />
+      </div>
+      
+      {/* Join Course Dialog */}
+      <JoinCourseDialog 
+        open={showJoinDialog} 
+        onOpenChange={setShowJoinDialog} 
+      />
+    </div>
   );
 };

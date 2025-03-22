@@ -20,13 +20,29 @@ import {
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-import { db } from "../../../src/firebase.jsx"; // Adjust the import path
+import { db } from "../../firebase.js"; // Adjust the import path
 import { collection, query, where, getDocs, doc, updateDoc, deleteDoc, addDoc } from "firebase/firestore";
+
+interface StudyPlanTask {
+  id: string;
+  title: string;
+  course: string;
+  time: string;
+  duration: number;
+  completed: boolean;
+  user_id: string;
+  created_at: string;
+}
+
+interface CourseGroup {
+  title: string;
+  tasks: StudyPlanTask[];
+}
 
 export const StudyPlanner = () => {
   const { user, isAuthenticated } = useAuth();
   const [date, setDate] = useState<Date | undefined>(new Date());
-  const [studyPlanData, setStudyPlanData] = useState([]);
+  const [studyPlanData, setStudyPlanData] = useState<CourseGroup[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   // Fetch study plan data from Firestore
@@ -37,17 +53,17 @@ export const StudyPlanner = () => {
       const querySnapshot = await getDocs(
         query(
           collection(db, "study_plans"),
-          where("user_id", "==", user.uid) // Filter by user ID
+          where("user_id", "==", user.id) // Change from user.uid to user.id
         )
       );
 
       const tasks = querySnapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
-      }));
+      })) as StudyPlanTask[];
 
       // Group tasks by course
-      const groupedData = tasks.reduce((acc, task) => {
+      const groupedData = tasks.reduce<CourseGroup[]>((acc, task) => {
         const course = acc.find(c => c.title === task.course);
         if (course) {
           course.tasks.push(task);
@@ -71,7 +87,7 @@ export const StudyPlanner = () => {
   }, [isAuthenticated, user]);
 
   // Add a new task to Firestore
-  const addTask = async (formData) => {
+  const addTask = async (formData: { title: string; course: string; time: string; duration: string }) => {
     if (!isAuthenticated || !user) {
       toast.error("Please login to add a task");
       return;
@@ -80,7 +96,7 @@ export const StudyPlanner = () => {
     try {
       const { title, course, time, duration } = formData;
       const newTask = {
-        user_id: user.uid,
+        user_id: user.id, // Change from user.uid to user.id
         course,
         title,
         duration: parseInt(duration),
@@ -111,6 +127,77 @@ export const StudyPlanner = () => {
     }
   };
 
+  // Add the missing toggleTaskCompletion function
+  const toggleTaskCompletion = async (courseId: string, taskId: string) => {
+    try {
+      const courseIndex = studyPlanData.findIndex(c => c.title === courseId);
+      if (courseIndex === -1) return;
+      
+      const taskIndex = studyPlanData[courseIndex].tasks.findIndex(t => t.id === taskId);
+      if (taskIndex === -1) return;
+      
+      const task = studyPlanData[courseIndex].tasks[taskIndex];
+      const newCompletedStatus = !task.completed;
+      
+      // Update in Firestore
+      await updateDoc(doc(db, "study_plans", taskId), {
+        completed: newCompletedStatus
+      });
+      
+      // Update local state
+      setStudyPlanData(prevData => {
+        const newData = [...prevData];
+        newData[courseIndex] = {
+          ...newData[courseIndex],
+          tasks: [
+            ...newData[courseIndex].tasks.slice(0, taskIndex),
+            { ...task, completed: newCompletedStatus },
+            ...newData[courseIndex].tasks.slice(taskIndex + 1)
+          ]
+        };
+        return newData;
+      });
+      
+      toast.success(newCompletedStatus ? "Task completed!" : "Task marked as incomplete");
+    } catch (error) {
+      console.error("Error toggling task completion:", error);
+      toast.error("Failed to update task");
+    }
+  };
+  
+  // Add the missing deleteTask function
+  const deleteTask = async (courseId: string, taskId: string) => {
+    try {
+      // Delete from Firestore
+      await deleteDoc(doc(db, "study_plans", taskId));
+      
+      // Update local state
+      setStudyPlanData(prevData => {
+        const courseIndex = prevData.findIndex(c => c.title === courseId);
+        if (courseIndex === -1) return prevData;
+        
+        const newTasks = prevData[courseIndex].tasks.filter(t => t.id !== taskId);
+        
+        if (newTasks.length === 0) {
+          // Remove the course if it has no more tasks
+          return prevData.filter(c => c.title !== courseId);
+        }
+        
+        const newData = [...prevData];
+        newData[courseIndex] = {
+          ...newData[courseIndex],
+          tasks: newTasks
+        };
+        return newData;
+      });
+      
+      toast.success("Task deleted successfully");
+    } catch (error) {
+      console.error("Error deleting task:", error);
+      toast.error("Failed to delete task");
+    }
+  };
+
   // Handle form submission for adding a new task
   const handleFormSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault(); // Prevent the default form submission behavior
@@ -136,7 +223,7 @@ export const StudyPlanner = () => {
     // Reset the form
     (e.target as HTMLFormElement).reset();
   };
-  // Rest of the component code...
+
   return (
     <div className="space-y-6">
       <div className="space-y-6">
@@ -182,7 +269,7 @@ export const StudyPlanner = () => {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2 space-y-6">
             {studyPlanData.map((course) => (
-              <Card key={course.id}>
+              <Card key={course.title}>
                 <CardHeader>
                   <CardTitle>{course.title}</CardTitle>
                 </CardHeader>
@@ -207,7 +294,7 @@ export const StudyPlanner = () => {
                                 : "border border-muted"
                             )}
                             onClick={() =>
-                              toggleTaskCompletion(course.id, task.id)
+                              toggleTaskCompletion(course.title, task.id)
                             }
                           >
                             {task.completed && (
@@ -236,7 +323,7 @@ export const StudyPlanner = () => {
                               size="sm"
                               className="text-green-600 border-green-200"
                               onClick={() =>
-                                toggleTaskCompletion(course.id, task.id)
+                                toggleTaskCompletion(course.title, task.id)
                               }
                             >
                               <Check className="h-4 w-4" />
@@ -245,7 +332,7 @@ export const StudyPlanner = () => {
                           <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => deleteTask(course.id, task.id)}
+                            onClick={() => deleteTask(course.title, task.id)}
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>
@@ -378,7 +465,3 @@ export const StudyPlanner = () => {
     </div>
   );
 };
-
-
-
-    
