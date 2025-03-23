@@ -29,6 +29,16 @@ export interface Resource {
   description?: string;
 }
 
+export interface TopicPdf {
+  id: string;
+  moduleId: string;
+  moduleTitle: string;
+  moduleDay: number;
+  topicTitle: string;
+  pdfContent: string;
+  contentBase64: string;
+}
+
 export interface AIGeneratedCourse {
   id: string;
   title: string;
@@ -36,5 +46,6 @@ export interface AIGeneratedCourse {
   syllabus: string;
   durationDays: number;
   modules: AICourseModule[];
+  topicPdfs?: TopicPdf[];
   createdAt: string;
 }

@@ -4,7 +4,7 @@
     ".read": "auth != null",
     ".write": "auth != null",
     "enrollments": {
-      ".indexOn": ["student_id", "course_id"]
+      ".indexOn": ["student_id", "course_id", "student_id"]
     },
     "ai-courses": {
       ".indexOn": ["id"]

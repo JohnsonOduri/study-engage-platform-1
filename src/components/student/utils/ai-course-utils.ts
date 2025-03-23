@@ -32,6 +32,25 @@ export async function generateCourseContent(
 
     // Parse the response from the API
     const course = await response.json();
+    
+    // Clean markdown formatting in PDF content
+    if (course.topicPdfs) {
+      course.topicPdfs = course.topicPdfs.map((pdf: any) => {
+        const cleanedContent = pdf.pdfContent
+          .replace(/#+\s/g, "")  // Remove markdown headings
+          .replace(/\*\*/g, "")  // Remove bold markers
+          .replace(/\*/g, "")    // Remove italic markers
+          .replace(/`/g, "")     // Remove code markers
+          .replace(/\n\n/g, "\n"); // Reduce double line breaks
+        
+        return {
+          ...pdf,
+          pdfContent: cleanedContent,
+          contentBase64: Buffer.from(cleanedContent).toString('base64')
+        };
+      });
+    }
+    
     console.log("Generated course:", course);
     
     // Save to Firebase
