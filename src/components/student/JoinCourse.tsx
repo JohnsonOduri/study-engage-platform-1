@@ -1,179 +1,164 @@
 
 import React, { useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { toast } from "sonner";
+import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Loader2, Plus, Check } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
-import { ref, get, push, set, query, orderByChild, equalTo } from "firebase/database";
+import { toast } from "sonner";
+import { ref, push, get, query, orderByChild, equalTo } from "firebase/database";
 import { database } from "@/firebase";
-import { Key } from "lucide-react";
 
-interface JoinCourseProps {
-  onJoinSuccess?: () => void;
-}
-
-export const JoinCourse: React.FC<JoinCourseProps> = ({ onJoinSuccess }) => {
-  const [accessCode, setAccessCode] = useState("");
-  const [loading, setLoading] = useState(false);
+export const JoinCourse = () => {
+  const [courseCode, setCourseCode] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
   const { user } = useAuth();
-  
-  const handleJoinCourse = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!accessCode.trim()) {
-      toast.error("Please enter an access code");
+
+  const handleJoinCourse = async () => {
+    if (!courseCode.trim()) {
+      setError("Please enter a course code");
       return;
     }
-    
-    if (!user?.id) {
-      toast.error("You must be logged in to join a course");
-      return;
-    }
-    
-    setLoading(true);
-    
+
+    setIsLoading(true);
+    setError("");
+    setSuccess("");
+
     try {
-      // First check in access_codes collection
-      const accessCodesRef = query(
-        ref(database, 'access_codes'),
-        orderByChild('code'),
-        equalTo(accessCode.trim().toUpperCase())
+      // Find the course with the given course code
+      const coursesRef = query(
+        ref(database, 'courses'),
+        orderByChild('course_code'),
+        equalTo(courseCode.trim())
       );
       
-      const accessCodesSnapshot = await get(accessCodesRef);
-      
-      let courseId = null;
-      
-      if (accessCodesSnapshot.exists()) {
-        // Get the course ID from the access code
-        accessCodesSnapshot.forEach((childSnapshot) => {
-          const codeData = childSnapshot.val();
-          courseId = codeData.course_id;
-        });
-      } else {
-        try {
-          // If not found in access_codes, try to find all courses and filter locally
-          // This avoids the indexing issue with direct queries
-          const coursesRef = ref(database, 'courses');
-          const coursesSnapshot = await get(coursesRef);
-          
-          if (coursesSnapshot.exists()) {
-            coursesSnapshot.forEach((childSnapshot) => {
-              const course = childSnapshot.val();
-              if (course.access_code === accessCode.trim().toUpperCase()) {
-                courseId = childSnapshot.key;
-              }
-            });
-          }
-        } catch (error) {
-          console.error("Error searching for courses:", error);
-        }
-      }
-      
-      if (!courseId) {
-        toast.error("Invalid access code. Please check and try again.");
-        setLoading(false);
-        return;
-      }
-      
-      // Get the course data
-      const courseRef = ref(database, `courses/${courseId}`);
-      const courseSnapshot = await get(courseRef);
+      const courseSnapshot = await get(coursesRef);
       
       if (!courseSnapshot.exists()) {
-        toast.error("Error finding course");
-        setLoading(false);
+        setError("Invalid course code. Please check and try again.");
+        setIsLoading(false);
         return;
       }
       
-      const courseData = courseSnapshot.val();
+      // There should be only one course with this code
+      let courseId;
+      let courseData;
+      courseSnapshot.forEach((childSnapshot) => {
+        courseId = childSnapshot.key;
+        courseData = childSnapshot.val();
+      });
       
-      // Check if already enrolled
+      if (!courseId) {
+        setError("Course not found.");
+        setIsLoading(false);
+        return;
+      }
+
+      // Check if user is already enrolled
       const enrollmentsRef = query(
         ref(database, 'enrollments'),
-        orderByChild('student_id'),
+        orderByChild('user_id'),
         equalTo(user.id)
       );
       
       const enrollmentsSnapshot = await get(enrollmentsRef);
-      
-      let alreadyEnrolled = false;
+      let isAlreadyEnrolled = false;
       
       if (enrollmentsSnapshot.exists()) {
         enrollmentsSnapshot.forEach((childSnapshot) => {
-          const enrollment = childSnapshot.val();
-          if (enrollment.course_id === courseId) {
-            alreadyEnrolled = true;
+          if (childSnapshot.val().course_id === courseId) {
+            isAlreadyEnrolled = true;
           }
         });
       }
       
-      if (alreadyEnrolled) {
-        toast.info("You are already enrolled in this course");
-        setLoading(false);
+      if (isAlreadyEnrolled) {
+        setError("You are already enrolled in this course.");
+        setIsLoading(false);
         return;
       }
       
-      // Create the enrollment
-      const enrollmentRef = push(ref(database, 'enrollments'));
-      await set(enrollmentRef, {
+      // Enroll the user in the course
+      const enrollmentData = {
         course_id: courseId,
-        student_id: user.id,
-        student_name: user.name || 'Unknown Student',
+        user_id: user.id,
         enrolled_at: new Date().toISOString(),
-        completed: false,
-        progress: 0
-      });
+        completed: false
+      };
       
-      toast.success(`Successfully enrolled in ${courseData.title}`);
-      setAccessCode("");
+      await push(ref(database, 'enrollments'), enrollmentData);
       
-      if (onJoinSuccess) {
-        onJoinSuccess();
-      }
+      setSuccess(`Successfully joined the course: ${courseData.title}`);
+      toast.success("Course joined successfully!");
+      setCourseCode("");
+      
     } catch (error) {
       console.error("Error joining course:", error);
-      toast.error("Failed to join course");
+      setError("An error occurred while joining the course. Please try again.");
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   };
-  
+
   return (
-    <Card className="max-w-md mx-auto">
+    <Card className="w-full max-w-md mx-auto">
       <CardHeader>
-        <CardTitle>Join a Course</CardTitle>
+        <CardTitle className="text-xl">Join a Course</CardTitle>
       </CardHeader>
       <CardContent>
-        <form onSubmit={handleJoinCourse} className="space-y-4">
+        <div className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="access-code">Course Access Code</Label>
-            <div className="flex gap-2">
-              <div className="relative flex-1">
-                <Key className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input
-                  id="access-code"
-                  placeholder="Enter access code"
-                  value={accessCode}
-                  onChange={(e) => setAccessCode(e.target.value.toUpperCase())}
-                  className="pl-9 font-mono uppercase"
-                  maxLength={6}
-                />
-              </div>
-              <Button type="submit" disabled={loading || !accessCode.trim()}>
-                {loading ? "Joining..." : "Join Course"}
-              </Button>
-            </div>
+            <label htmlFor="course-code" className="text-sm font-medium">
+              Enter Course Code
+            </label>
+            <Input
+              id="course-code"
+              value={courseCode}
+              onChange={(e) => setCourseCode(e.target.value)}
+              placeholder="Enter the course code provided by your teacher"
+              disabled={isLoading}
+            />
+            <p className="text-xs text-muted-foreground">
+              This is the unique code shared by your teacher for the course.
+            </p>
           </div>
-          
-          <p className="text-sm text-muted-foreground">
-            Ask your teacher for the access code to join their course. 
-            The code is case-insensitive.
-          </p>
-        </form>
+
+          {error && (
+            <Alert variant="destructive">
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          )}
+
+          {success && (
+            <Alert className="bg-green-50 border-green-200 text-green-800">
+              <Check className="h-4 w-4 text-green-600" />
+              <AlertDescription>{success}</AlertDescription>
+            </Alert>
+          )}
+        </div>
       </CardContent>
+      <CardFooter>
+        <Button 
+          onClick={handleJoinCourse} 
+          disabled={isLoading} 
+          className="w-full"
+        >
+          {isLoading ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Joining...
+            </>
+          ) : (
+            <>
+              <Plus className="mr-2 h-4 w-4" />
+              Join Course
+            </>
+          )}
+        </Button>
+      </CardFooter>
     </Card>
   );
 };

@@ -1,330 +1,252 @@
+
 import React, { useState } from "react";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-  CardFooter,
-} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Progress } from "@/components/ui/progress";
-import {
-  Bot,
-  FileQuestion,
-  CircleCheck,
-  RotateCw,
-  ArrowRight,
-  BookOpen,
-  RefreshCw,
-  GraduationCap,
-} from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { FileQuestion, Brain, Send, RefreshCw, Plus, Save, Upload, CheckCircle } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
+import { database } from "@/firebase";
+import { ref, push } from "firebase/database";
 import { toast } from "sonner";
-import axios from "axios";
 
-interface QuizQuestion {
-  question: string;
-  options: string[];
-  correctAnswer: number;
-  explanation: string;
+interface QuizGeneratorProps {
+  isTeacher?: boolean;
 }
 
-interface Quiz {
-  id: string;
-  title: string;
-  topic: string;
-  difficulty: string;
-  questions: QuizQuestion[];
-}
-
-export const QuizGenerator = () => {
+export const QuizGenerator = ({ isTeacher = false }: QuizGeneratorProps) => {
+  const { user } = useAuth();
+  const [quizTopic, setQuizTopic] = useState("");
+  const [complexity, setComplexity] = useState("medium");
+  const [questionCount, setQuestionCount] = useState("5");
+  const [quizType, setQuizType] = useState("multiple-choice");
+  const [courseId, setCourseId] = useState("");
+  const [quizTitle, setQuizTitle] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState("generate");
-  const [topic, setTopic] = useState("");
-  const [difficulty, setDifficulty] = useState("medium");
-  const [numQuestions, setNumQuestions] = useState("5");
-  const [quiz, setQuiz] = useState<Quiz | null>(null);
-  const [currentQuizMode, setCurrentQuizMode] = useState<"take" | "review">(
-    "take"
-  );
-  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
-  const [selectedAnswers, setSelectedAnswers] = useState<number[]>([]);
-  const [quizCompleted, setQuizCompleted] = useState(false);
-  const [score, setScore] = useState(0);
+  const [generatedQuiz, setGeneratedQuiz] = useState<null | {
+    title: string;
+    questions: {
+      question: string;
+      options?: string[];
+      answer: string;
+    }[];
+  }>(null);
+  const [showSavedSuccess, setShowSavedSuccess] = useState(false);
 
-  // Gemini API Key
-  const GEMINI_API_KEY = "AIzaSyC7lI04maXXCzhqWXAeMp5J9oqjllS0mXA"; // Replace with your Gemini API key
-  const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`;
-
-  const parseQuizFromText = (text: string): Quiz | null => {
-    try {
-      const questions: QuizQuestion[] = [];
-      const lines = text.split("\n");
-
-      let i = 0;
-      while (i < lines.length) {
-        const line = lines[i].trim();
-
-        // Look for the start of a question
-        if (line.startsWith("Question:")) {
-          const question = line.replace("Question:", "").trim();
-          const options: string[] = [];
-
-          // Collect the next 4 lines as options
-          for (let j = 1; j <= 4; j++) {
-            if (lines[i + j] && lines[i + j].trim().startsWith(`${j}.`)) {
-              options.push(lines[i + j].replace(`${j}.`, "").trim());
-            } else {
-              console.error("Invalid option format:", lines[i + j]);
-              return null; // Exit if options are not in the expected format
-            }
-          }
-
-          // Look for the correct answer line
-          const correctAnswerLine = lines[i + 5]?.trim();
-          if (
-            !correctAnswerLine ||
-            !correctAnswerLine.startsWith("Correct Answer:")
-          ) {
-            console.error("Invalid correct answer format:", correctAnswerLine);
-            return null; // Exit if the correct answer line is missing or invalid
-          }
-
-          const correctAnswer =
-            parseInt(
-              correctAnswerLine.replace("Correct Answer:", "").trim(),
-              10
-            ) - 1; // Convert to zero-based index
-
-          if (isNaN(correctAnswer)) {
-            console.error("Invalid correct answer value:", correctAnswerLine);
-            return null; // Exit if the correct answer is not a number
-          }
-
-          // Look for the explanation line
-          const explanationLine = lines[i + 6]?.trim();
-          if (!explanationLine || !explanationLine.startsWith("Explanation:")) {
-            console.error("Invalid explanation format:", explanationLine);
-            return null; // Exit if the explanation line is missing or invalid
-          }
-
-          const explanation = explanationLine
-            .replace("Explanation:", "")
-            .trim();
-
-          // Add the question to the list
-          questions.push({
-            question,
-            options,
-            correctAnswer,
-            explanation,
-          });
-
-          i += 7; // Move to the next question
-        } else {
-          i++; // Skip lines that don't start with "Question:"
-        }
-      }
-
-      if (questions.length > 0) {
-        return {
-          id: Date.now().toString(),
-          title: "Generated Quiz",
-          topic: "General",
-          difficulty: "medium",
-          questions,
-        };
-      }
-
-      console.error("No valid questions found in the generated text.");
-      return null;
-    } catch (error) {
-      console.error("Error parsing quiz text:", error);
-      return null;
-    }
-  };
-
-  const generateQuiz = async () => {
-    if (!topic) {
-      toast.error("Please enter a topic");
+  const handleGenerateQuiz = () => {
+    if (!quizTopic.trim()) {
+      toast.error("Please enter a quiz topic");
       return;
     }
 
     setIsLoading(true);
-
-    try {
-      const prompt = `Generate a ${difficulty} level quiz with ${numQuestions} questions on the topic of ${topic}. Each question should have 4 options, a correct answer, and an explanation. Return the response in the following format:
-
-      Question: [Your question here]
-      1. [Option 1]
-      2. [Option 2]
-      3. [Option 3]
-      4. [Option 4]
-      Correct Answer: [Correct option number]
-      Explanation: [Explanation for why the correct answer is correct]`;
-
-      const response = await axios.post(
-        GEMINI_API_URL,
-        {
-          contents: [
-            {
-              parts: [
-                {
-                  text: prompt,
-                },
-              ],
-            },
-          ],
-        },
-        {
-          headers: {
-            "Content-Type": "application/json",
-          },
+    // Simulate AI quiz generation
+    setTimeout(() => {
+      const questions = [];
+      const questionTypes = quizType === "mixed" 
+        ? ["multiple-choice", "true-false", "short-answer"]
+        : [quizType];
+      
+      const numQuestions = parseInt(questionCount);
+      
+      for (let i = 0; i < numQuestions; i++) {
+        const currentType = questionTypes[i % questionTypes.length];
+        
+        if (currentType === "multiple-choice") {
+          questions.push({
+            question: `Question ${i + 1}: What is an important concept in ${quizTopic}?`,
+            options: [
+              `Option A about ${quizTopic}`,
+              `Option B about ${quizTopic}`,
+              `Option C about ${quizTopic}`,
+              `Option D about ${quizTopic}`
+            ],
+            answer: "Option A"
+          });
+        } else if (currentType === "true-false") {
+          questions.push({
+            question: `Question ${i + 1}: True or False - ${quizTopic} is an important field of study.`,
+            options: ["True", "False"],
+            answer: "True"
+          });
+        } else {
+          questions.push({
+            question: `Question ${i + 1}: Explain a key concept related to ${quizTopic}.`,
+            answer: "The answer would be provided by the student and evaluated by the teacher."
+          });
         }
-      );
-
-      const generatedText = response.data.candidates[0].content.parts[0].text;
-      console.log("Generated Text:", generatedText); // Debugging: Log generated text
-
-      const quizData = parseQuizFromText(generatedText);
-      console.log("Parsed Quiz Data:", quizData); // Debugging: Log parsed quiz data
-
-      if (quizData && quizData.questions) {
-        const newQuiz: Quiz = {
-          id: Date.now().toString(),
-          title: `${topic} Quiz`,
-          topic,
-          difficulty,
-          questions: quizData.questions,
-        };
-
-        setQuiz(newQuiz);
-        console.log("Quiz State Updated:", newQuiz); // Debugging: Log updated quiz state
-        setCurrentQuestionIndex(0);
-        setSelectedAnswers(new Array(quizData.questions.length).fill(-1));
-        setQuizCompleted(false);
-        setScore(0);
-        setCurrentQuizMode("take");
-        setActiveTab("take");
-
-        toast.success("Quiz generated successfully!");
-      } else {
-        toast.error("Failed to generate quiz. Please try again.");
       }
-    } catch (error: any) {
-      console.error("Error generating quiz:", error);
-      toast.error(error.message || "Failed to generate quiz");
+      
+      setGeneratedQuiz({
+        title: quizTitle || `Quiz on ${quizTopic}`,
+        questions
+      });
+      
+      setIsLoading(false);
+    }, 1500);
+  };
+
+  const handleSaveQuiz = async () => {
+    if (!generatedQuiz) return;
+    
+    try {
+      setIsLoading(true);
+      
+      const quizData = {
+        title: generatedQuiz.title,
+        topic: quizTopic,
+        complexity,
+        type: quizType,
+        course_id: courseId || null,
+        questions: generatedQuiz.questions,
+        created_by: user?.id,
+        created_at: new Date().toISOString(),
+        is_published: isTeacher, // Students create drafts, teachers publish directly
+        is_ai_generated: true
+      };
+      
+      // Save to Firebase
+      const quizzesRef = ref(database, 'quizzes');
+      await push(quizzesRef, quizData);
+      
+      toast.success(isTeacher ? "Quiz published successfully" : "Quiz saved successfully");
+      setShowSavedSuccess(true);
+      
+      // Reset after a few seconds if teacher (for creating multiple quizzes)
+      if (isTeacher) {
+        setTimeout(() => {
+          setShowSavedSuccess(false);
+          if (confirm("Create another quiz?")) {
+            setGeneratedQuiz(null);
+            setQuizTopic("");
+            setQuizTitle("");
+          }
+        }, 3000);
+      }
+    } catch (error) {
+      console.error("Error saving quiz:", error);
+      toast.error("Failed to save quiz");
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleAnswerSelect = (answerIndex: number) => {
-    const newAnswers = [...selectedAnswers];
-    newAnswers[currentQuestionIndex] = answerIndex;
-    setSelectedAnswers(newAnswers);
-  };
-
-  const goToNextQuestion = () => {
-    if (quiz && currentQuestionIndex < quiz.questions.length - 1) {
-      setCurrentQuestionIndex(currentQuestionIndex + 1);
-    } else {
-      calculateScore();
+  const handleAssignQuiz = async () => {
+    if (!generatedQuiz || !courseId) {
+      toast.error("Please select a course before assigning");
+      return;
     }
-  };
-
-  const goToPreviousQuestion = () => {
-    if (currentQuestionIndex > 0) {
-      setCurrentQuestionIndex(currentQuestionIndex - 1);
+    
+    try {
+      setIsLoading(true);
+      
+      // First save the quiz
+      const quizData = {
+        title: generatedQuiz.title,
+        topic: quizTopic,
+        complexity,
+        type: quizType,
+        course_id: courseId,
+        questions: generatedQuiz.questions,
+        created_by: user?.id,
+        created_at: new Date().toISOString(),
+        is_published: true,
+        is_ai_generated: true
+      };
+      
+      // Save to Firebase
+      const quizzesRef = ref(database, 'quizzes');
+      const newQuizRef = await push(quizzesRef, quizData);
+      
+      // Create an assignment linking to this quiz
+      const assignmentData = {
+        title: `Quiz: ${generatedQuiz.title}`,
+        description: `Complete this ${complexity} difficulty quiz on ${quizTopic}`,
+        course_id: courseId,
+        due_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // 1 week from now
+        points: complexity === "easy" ? 50 : complexity === "medium" ? 75 : 100,
+        created_at: new Date().toISOString(),
+        created_by: user?.id,
+        is_ai_generated: true,
+        quiz_id: newQuizRef.key
+      };
+      
+      const assignmentsRef = ref(database, 'assignments');
+      await push(assignmentsRef, assignmentData);
+      
+      toast.success("Quiz assigned to students successfully");
+      setShowSavedSuccess(true);
+      
+      // Reset after a few seconds
+      setTimeout(() => {
+        setShowSavedSuccess(false);
+        if (confirm("Create another quiz?")) {
+          setGeneratedQuiz(null);
+          setQuizTopic("");
+          setQuizTitle("");
+        }
+      }, 3000);
+    } catch (error) {
+      console.error("Error assigning quiz:", error);
+      toast.error("Failed to assign quiz");
+    } finally {
+      setIsLoading(false);
     }
-  };
-
-  const calculateScore = () => {
-    if (!quiz) return;
-
-    let correctAnswers = 0;
-    quiz.questions.forEach((q, index) => {
-      if (selectedAnswers[index] === q.correctAnswer) {
-        correctAnswers++;
-      }
-    });
-
-    const finalScore = Math.round(
-      (correctAnswers / quiz.questions.length) * 100
-    );
-    setScore(finalScore);
-    setQuizCompleted(true);
-    setCurrentQuizMode("review");
-
-    toast.success(`Quiz completed! Your score: ${finalScore}%`);
-  };
-
-  const resetQuiz = () => {
-    if (!quiz) return;
-    setCurrentQuestionIndex(0);
-    setSelectedAnswers(new Array(quiz.questions.length).fill(-1));
-    setQuizCompleted(false);
-    setScore(0);
-    setCurrentQuizMode("take");
   };
 
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-2xl font-bold">Quiz Generator</h2>
-        <p className="text-muted-foreground">
-          Create and take quizzes on any topic
+        <h2 className="text-2xl font-bold">AI Quiz Generator</h2>
+        <p className="text-muted-foreground mt-1">
+          {isTeacher 
+            ? "Create and assign AI-generated quizzes to your students" 
+            : "Create custom quizzes to test your knowledge"}
         </p>
       </div>
 
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid grid-cols-2 mb-6">
-          <TabsTrigger value="generate">
-            <Bot className="h-4 w-4 mr-2" />
-            Generate Quiz
-          </TabsTrigger>
-          <TabsTrigger value="take" disabled={!quiz}>
-            <FileQuestion className="h-4 w-4 mr-2" />
-            Take Quiz
-          </TabsTrigger>
-        </TabsList>
-
-        {/* Generate Quiz Tab */}
-        <TabsContent value="generate">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {!generatedQuiz ? (
           <Card>
             <CardHeader>
-              <CardTitle>Generate New Quiz</CardTitle>
+              <CardTitle className="flex items-center gap-2">
+                <Brain className="h-5 w-5" />
+                Generate New Quiz
+              </CardTitle>
               <CardDescription>
-                Create a custom quiz using AI based on your preferences
+                Provide a topic and our AI will create a custom quiz for you
               </CardDescription>
             </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="topic">Topic</Label>
-                  <Input
-                    id="topic"
-                    placeholder="Enter a topic (e.g., JavaScript, React, Databases)"
-                    value={topic}
-                    onChange={(e) => setTopic(e.target.value)}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="difficulty">Difficulty Level</Label>
-                  <Select value={difficulty} onValueChange={setDifficulty}>
-                    <SelectTrigger id="difficulty">
+            <CardContent className="space-y-4">
+              <div className="grid gap-2">
+                <Label htmlFor="quizTitle">Quiz Title</Label>
+                <Input
+                  id="quizTitle"
+                  placeholder="Enter a title for your quiz"
+                  value={quizTitle}
+                  onChange={(e) => setQuizTitle(e.target.value)}
+                />
+              </div>
+              
+              <div className="grid gap-2">
+                <Label htmlFor="quizTopic">Quiz Topic</Label>
+                <Textarea
+                  id="quizTopic"
+                  placeholder="Enter the quiz topic (e.g., 'Data Structures in Computer Science')"
+                  value={quizTopic}
+                  onChange={(e) => setQuizTopic(e.target.value)}
+                  rows={3}
+                />
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="grid gap-2">
+                  <Label htmlFor="complexity">Difficulty</Label>
+                  <Select value={complexity} onValueChange={setComplexity}>
+                    <SelectTrigger id="complexity">
                       <SelectValue placeholder="Select difficulty" />
                     </SelectTrigger>
                     <SelectContent>
@@ -334,228 +256,205 @@ export const QuizGenerator = () => {
                     </SelectContent>
                   </Select>
                 </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="num-questions">Number of Questions</Label>
-                  <Select value={numQuestions} onValueChange={setNumQuestions}>
-                    <SelectTrigger id="num-questions">
-                      <SelectValue placeholder="Select number of questions" />
+                
+                <div className="grid gap-2">
+                  <Label htmlFor="questionCount">Questions</Label>
+                  <Select value={questionCount} onValueChange={setQuestionCount}>
+                    <SelectTrigger id="questionCount">
+                      <SelectValue placeholder="Number of questions" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="3">3 Questions</SelectItem>
                       <SelectItem value="5">5 Questions</SelectItem>
+                      <SelectItem value="10">10 Questions</SelectItem>
+                      <SelectItem value="15">15 Questions</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                <div className="grid gap-2">
+                  <Label htmlFor="quizType">Question Type</Label>
+                  <Select value={quizType} onValueChange={setQuizType}>
+                    <SelectTrigger id="quizType">
+                      <SelectValue placeholder="Select type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="multiple-choice">Multiple Choice</SelectItem>
+                      <SelectItem value="true-false">True/False</SelectItem>
+                      <SelectItem value="short-answer">Short Answer</SelectItem>
+                      <SelectItem value="mixed">Mixed</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
               </div>
+              
+              {isTeacher && (
+                <div className="grid gap-2">
+                  <Label htmlFor="courseSelect">Assign to Course (Optional)</Label>
+                  <Select value={courseId} onValueChange={setCourseId}>
+                    <SelectTrigger id="courseSelect">
+                      <SelectValue placeholder="Select course" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="course1">Web Development 101</SelectItem>
+                      <SelectItem value="course2">Advanced JavaScript</SelectItem>
+                      <SelectItem value="course3">Data Structures</SelectItem>
+                      <SelectItem value="course4">Machine Learning Basics</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
             </CardContent>
             <CardFooter>
-              <Button
-                onClick={generateQuiz}
-                className="w-full gap-2"
-                disabled={isLoading || !topic}
-              >
+              <Button onClick={handleGenerateQuiz} disabled={isLoading} className="w-full">
                 {isLoading ? (
                   <>
-                    <RotateCw className="h-4 w-4 animate-spin" />
-                    Generating Quiz...
+                    <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                    Generating...
                   </>
                 ) : (
                   <>
-                    <Bot className="h-4 w-4" />
+                    <FileQuestion className="h-4 w-4 mr-2" />
                     Generate Quiz
                   </>
                 )}
               </Button>
             </CardFooter>
           </Card>
-        </TabsContent>
-
-        {/* Take Quiz Tab */}
-        <TabsContent value="take">
-          {quiz && quiz.questions && quiz.questions.length > 0 && (
-            <Card className="relative">
-              <CardHeader>
-                <div className="flex justify-between items-center">
-                  <div>
-                    <CardTitle>{quiz.title}</CardTitle>
-                    <CardDescription>
-                      {quiz.topic} •{" "}
-                      {quiz.difficulty.charAt(0).toUpperCase() +
-                        quiz.difficulty.slice(1)}{" "}
-                      • {quiz.questions.length} questions
-                    </CardDescription>
+        ) : (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <FileQuestion className="h-5 w-5" />
+                {generatedQuiz.title}
+              </CardTitle>
+              <CardDescription>
+                {quizType === "mixed" ? "Mixed question types" : `${quizType} quiz`} • {questionCount} questions • {complexity} difficulty
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="max-h-[400px] overflow-y-auto">
+              <div className="space-y-4">
+                {generatedQuiz.questions.map((q, idx) => (
+                  <div key={idx} className="border rounded-md p-4">
+                    <p className="font-medium">{q.question}</p>
+                    {q.options && (
+                      <div className="mt-2 space-y-1">
+                        {q.options.map((option, optIdx) => (
+                          <div key={optIdx} className="flex items-center gap-2">
+                            <input 
+                              type={quizType === "true-false" ? "radio" : "checkbox"} 
+                              id={`q${idx}-opt${optIdx}`} 
+                              name={`question-${idx}`} 
+                              className="h-4 w-4"
+                              disabled
+                            />
+                            <label htmlFor={`q${idx}-opt${optIdx}`} className="text-sm">{option}</label>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    {!q.options && (
+                      <textarea 
+                        className="mt-2 w-full border rounded-md p-2 text-sm" 
+                        rows={2} 
+                        placeholder="Type your answer here..." 
+                        disabled
+                      />
+                    )}
                   </div>
-                  <Tabs
-                    value={currentQuizMode}
-                    onValueChange={(value) =>
-                      setCurrentQuizMode(value as "take" | "review")
-                    }
-                  >
-                    <TabsList>
-                      <TabsTrigger value="take" disabled={quizCompleted}>
-                        Take
-                      </TabsTrigger>
-                      <TabsTrigger value="review">Review</TabsTrigger>
-                    </TabsList>
-                  </Tabs>
+                ))}
+              </div>
+            </CardContent>
+            <CardFooter className="flex flex-col sm:flex-row gap-2">
+              {showSavedSuccess ? (
+                <div className="flex items-center justify-center w-full p-2 bg-green-50 text-green-700 rounded-md">
+                  <CheckCircle className="h-4 w-4 mr-2" />
+                  Quiz {isTeacher ? "published" : "saved"} successfully!
                 </div>
-              </CardHeader>
-
-              <CardContent>
-                {/* Progress bar */}
-                <div className="mb-6">
-                  <div className="flex justify-between text-sm mb-1">
-                    <span>
-                      Question {currentQuestionIndex + 1} of{" "}
-                      {quiz.questions.length}
-                    </span>
-                    {quizCompleted && <span>Score: {score}%</span>}
-                  </div>
-                  <Progress
-                    value={
-                      ((currentQuestionIndex + 1) / quiz.questions.length) * 100
-                    }
+              ) : (
+                <>
+                  <Button variant="outline" onClick={() => setGeneratedQuiz(null)} className="sm:flex-1">
+                    <RefreshCw className="h-4 w-4 mr-2" />
+                    Generate New Quiz
+                  </Button>
+                  {isTeacher ? (
+                    <>
+                      <Button onClick={handleSaveQuiz} className="sm:flex-1" disabled={isLoading}>
+                        <Save className="h-4 w-4 mr-2" />
+                        Save Quiz
+                      </Button>
+                      <Button onClick={handleAssignQuiz} className="sm:flex-1" variant="default" disabled={isLoading || !courseId}>
+                        <Upload className="h-4 w-4 mr-2" />
+                        Assign to Students
+                      </Button>
+                    </>
+                  ) : (
+                    <Button onClick={handleSaveQuiz} className="sm:flex-1" disabled={isLoading}>
+                      <Save className="h-4 w-4 mr-2" />
+                      Save Quiz
+                    </Button>
+                  )}
+                </>
+              )}
+            </CardFooter>
+          </Card>
+        )}
+        
+        <Card>
+          <CardHeader>
+            <CardTitle>Quiz Library</CardTitle>
+            <CardDescription>
+              {isTeacher ? "Browse and manage your saved quizzes" : "Access your saved quizzes"}
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Tabs defaultValue="recent">
+              <TabsList className="mb-4">
+                <TabsTrigger value="recent">Recent</TabsTrigger>
+                <TabsTrigger value="published">{isTeacher ? "Published" : "Completed"}</TabsTrigger>
+                <TabsTrigger value="drafts">Drafts</TabsTrigger>
+              </TabsList>
+              
+              <TabsContent value="recent" className="mt-0">
+                <div className="flex flex-col gap-2">
+                  <EmptyState 
+                    title="No quizzes yet" 
+                    description={`Generate your first quiz ${isTeacher ? "to assign to students" : "to practice"}`}
                   />
                 </div>
-
-                {/* Question */}
-                <div className="space-y-6">
-                  <div>
-                    <h3 className="text-lg font-medium mb-4">
-                      {currentQuestionIndex + 1}.{" "}
-                      {quiz.questions[currentQuestionIndex].question}
-                    </h3>
-
-                    <RadioGroup
-                      value={
-                        selectedAnswers[currentQuestionIndex]?.toString() || ""
-                      }
-                      onValueChange={(value) =>
-                        handleAnswerSelect(parseInt(value))
-                      }
-                      disabled={currentQuizMode === "review"}
-                    >
-                      <div className="space-y-3">
-                        {quiz.questions[currentQuestionIndex].options.map(
-                          (option, index) => (
-                            <div
-                              key={index}
-                              className={`flex items-start space-x-2 p-3 rounded-md border ${
-                                currentQuizMode === "review"
-                                  ? index ===
-                                    quiz.questions[currentQuestionIndex]
-                                      .correctAnswer
-                                    ? "border-green-500 bg-green-50 dark:bg-green-900/10"
-                                    : selectedAnswers[currentQuestionIndex] ===
-                                      index
-                                    ? "border-red-500 bg-red-50 dark:bg-red-900/10"
-                                    : "border-gray-200"
-                                  : "border-gray-200"
-                              }`}
-                            >
-                              <RadioGroupItem
-                                value={index.toString()}
-                                id={`option-${index}`}
-                                disabled={currentQuizMode === "review"}
-                              />
-                              <Label
-                                htmlFor={`option-${index}`}
-                                className="flex-1 cursor-pointer"
-                              >
-                                {option}
-                              </Label>
-                              {currentQuizMode === "review" &&
-                                index ===
-                                  quiz.questions[currentQuestionIndex]
-                                    .correctAnswer && (
-                                  <CircleCheck className="h-5 w-5 text-green-500 ml-2" />
-                                )}
-                            </div>
-                          )
-                        )}
-                      </div>
-                    </RadioGroup>
-                  </div>
-
-                  {/* Explanation (only in review mode) */}
-                  {currentQuizMode === "review" && (
-                    <div className="bg-blue-50 dark:bg-blue-900/10 p-4 rounded-md border border-blue-200 dark:border-blue-800">
-                      <h4 className="font-medium text-blue-900 dark:text-blue-300 mb-1">
-                        Explanation
-                      </h4>
-                      <p className="text-blue-800 dark:text-blue-200 text-sm">
-                        {quiz.questions[currentQuestionIndex].explanation}
-                      </p>
-                    </div>
-                  )}
+              </TabsContent>
+              
+              <TabsContent value="published" className="mt-0">
+                <div className="flex flex-col gap-2">
+                  <EmptyState 
+                    title={isTeacher ? "No published quizzes" : "No completed quizzes"} 
+                    description={isTeacher ? "Publish quizzes to make them available to students" : "Complete quizzes to see your results here"}
+                  />
                 </div>
-              </CardContent>
-
-              <CardFooter className="flex justify-between">
-                <Button
-                  variant="outline"
-                  onClick={goToPreviousQuestion}
-                  disabled={currentQuestionIndex === 0}
-                >
-                  Previous
-                </Button>
-
-                <div className="flex gap-2">
-                  {currentQuizMode === "review" && (
-                    <Button variant="outline" onClick={resetQuiz}>
-                      <RefreshCw className="h-4 w-4 mr-2" />
-                      Retake Quiz
-                    </Button>
-                  )}
-
-                  {!quizCompleted && currentQuizMode === "take" ? (
-                    <Button
-                      onClick={goToNextQuestion}
-                      disabled={selectedAnswers[currentQuestionIndex] === -1}
-                    >
-                      {currentQuestionIndex === quiz.questions.length - 1
-                        ? "Finish Quiz"
-                        : "Next"}
-                      <ArrowRight className="h-4 w-4 ml-2" />
-                    </Button>
-                  ) : (
-                    <Button onClick={() => setCurrentQuizMode("review")}>
-                      <BookOpen className="h-4 w-4 mr-2" />
-                      Review Answers
-                    </Button>
-                  )}
+              </TabsContent>
+              
+              <TabsContent value="drafts" className="mt-0">
+                <div className="flex flex-col gap-2">
+                  <EmptyState 
+                    title="No draft quizzes" 
+                    description="Save quizzes as drafts to edit them later"
+                  />
                 </div>
-              </CardFooter>
+              </TabsContent>
+            </Tabs>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
+};
 
-              {/* Result overlay when completed */}
-              {quizCompleted && currentQuizMode === "take" && (
-                <div className="absolute inset-0 bg-background/80 backdrop-blur-sm flex flex-col items-center justify-center p-6">
-                  <GraduationCap className="h-16 w-16 text-primary mb-4" />
-                  <h3 className="text-2xl font-bold mb-2">Quiz Completed!</h3>
-                  <p className="text-4xl font-bold text-primary mb-6">
-                    {score}%
-                  </p>
-                  <p className="text-muted-foreground mb-8 text-center">
-                    You got {Math.round((score / 100) * quiz.questions.length)}{" "}
-                    out of {quiz.questions.length} questions correct.
-                  </p>
-                  <div className="flex gap-4">
-                    <Button variant="outline" onClick={resetQuiz}>
-                      <RefreshCw className="h-4 w-4 mr-2" />
-                      Retake Quiz
-                    </Button>
-                    <Button onClick={() => setCurrentQuizMode("review")}>
-                      <BookOpen className="h-4 w-4 mr-2" />
-                      Review Answers
-                    </Button>
-                  </div>
-                </div>
-              )}
-            </Card>
-          )}
-        </TabsContent>
-      </Tabs>
+const EmptyState = ({ title, description }: { title: string; description: string }) => {
+  return (
+    <div className="flex flex-col items-center justify-center py-8 text-center">
+      <FileQuestion className="h-12 w-12 text-muted-foreground mb-4" />
+      <h3 className="text-lg font-medium">{title}</h3>
+      <p className="text-sm text-muted-foreground max-w-xs mt-1">{description}</p>
     </div>
   );
 };

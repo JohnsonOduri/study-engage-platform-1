@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Search, Trash, Pencil, Plus, BookOpen, Calendar, Clock, CheckCircle, XCircle } from "lucide-react";
+import { Loader2, Search, Trash, Pencil, Plus, BookOpen, Calendar, Clock, CheckCircle, XCircle, Copy } from "lucide-react";
 import { toast } from "sonner";
 import { ref, set, get, remove, update, query, orderByChild, equalTo } from "firebase/database";
 import { database } from "@/firebase";
@@ -26,6 +26,7 @@ export const CourseManagement = () => {
     description: "",
     instructor_id: "",
     category: "general",
+    course_code: "",
     prerequisites: [],
     is_archived: false
   });
@@ -37,7 +38,6 @@ export const CourseManagement = () => {
     const fetchData = async () => {
       setIsLoading(true);
       try {
-        // Fetch courses
         const coursesRef = ref(database, 'courses');
         const coursesSnapshot = await get(coursesRef);
         
@@ -51,6 +51,7 @@ export const CourseManagement = () => {
               description: courseData.description,
               instructor_id: courseData.instructor_id,
               category: courseData.category,
+              course_code: courseData.course_code,
               prerequisites: courseData.prerequisites || [],
               is_archived: courseData.is_archived || false,
               created_at: courseData.created_at,
@@ -60,7 +61,6 @@ export const CourseManagement = () => {
         }
         setCourses(coursesData);
         
-        // Fetch instructors (users with teacher role)
         const teachersRef = query(
           ref(database, 'users'),
           orderByChild('role'),
@@ -104,17 +104,32 @@ export const CourseManagement = () => {
     return instructor?.name || "Unknown Instructor";
   };
 
+  const generateCourseCode = () => {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    let code = '';
+    for (let i = 0; i < 6; i++) {
+      code += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return code;
+  };
+
+  const copyCourseCode = (code) => {
+    navigator.clipboard.writeText(code);
+    toast.success("Course code copied to clipboard");
+  };
+
   const handleAddCourse = async () => {
     try {
-      // Generate unique ID
       const courseId = `course_${Date.now()}`;
       
-      // Save to Firebase
+      const courseCode = newCourse.course_code?.trim() || generateCourseCode();
+      
       await set(ref(database, `courses/${courseId}`), {
         title: newCourse.title,
         description: newCourse.description,
         instructor_id: newCourse.instructor_id,
         category: newCourse.category,
+        course_code: courseCode,
         prerequisites: newCourse.prerequisites || [],
         is_archived: false,
         created_at: new Date().toISOString(),
@@ -124,25 +139,25 @@ export const CourseManagement = () => {
       toast.success("Course created successfully");
       setIsAddCourseOpen(false);
       
-      // Add to local state
       setCourses(prev => [...prev, {
         id: courseId,
         title: newCourse.title!,
         description: newCourse.description,
         instructor_id: newCourse.instructor_id!,
         category: newCourse.category,
+        course_code: courseCode,
         prerequisites: newCourse.prerequisites || [],
         is_archived: false,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
       }]);
       
-      // Reset form
       setNewCourse({
         title: "",
         description: "",
         instructor_id: "",
         category: "general",
+        course_code: "",
         prerequisites: [],
         is_archived: false
       });
@@ -156,12 +171,12 @@ export const CourseManagement = () => {
     if (!selectedCourse) return;
     
     try {
-      // Update in Firebase
       await update(ref(database, `courses/${selectedCourse.id}`), {
         title: selectedCourse.title,
         description: selectedCourse.description,
         instructor_id: selectedCourse.instructor_id,
         category: selectedCourse.category,
+        course_code: selectedCourse.course_code,
         prerequisites: selectedCourse.prerequisites || [],
         is_archived: selectedCourse.is_archived,
         updated_at: new Date().toISOString()
@@ -170,7 +185,6 @@ export const CourseManagement = () => {
       toast.success("Course updated successfully");
       setIsEditCourseOpen(false);
       
-      // Update in local state
       setCourses(prev => prev.map(course => 
         course.id === selectedCourse.id ? selectedCourse : course
       ));
@@ -184,13 +198,11 @@ export const CourseManagement = () => {
     if (!selectedCourse) return;
     
     try {
-      // Delete from Firebase
       await remove(ref(database, `courses/${selectedCourse.id}`));
       
       toast.success("Course deleted successfully");
       setIsDeleteCourseOpen(false);
       
-      // Remove from local state
       setCourses(prev => prev.filter(course => course.id !== selectedCourse.id));
     } catch (error: any) {
       toast.error(error.message || "Failed to delete course");
@@ -200,7 +212,6 @@ export const CourseManagement = () => {
 
   const handleArchiveCourse = async (course: Course, archive: boolean) => {
     try {
-      // Update in Firebase
       await update(ref(database, `courses/${course.id}`), {
         is_archived: archive,
         updated_at: new Date().toISOString()
@@ -208,7 +219,6 @@ export const CourseManagement = () => {
       
       toast.success(`Course ${archive ? 'archived' : 'unarchived'} successfully`);
       
-      // Update in local state
       setCourses(prev => prev.map(c => 
         c.id === course.id ? {...c, is_archived: archive} : c
       ));
@@ -261,6 +271,20 @@ export const CourseManagement = () => {
                     )}
                   </div>
                   <h3 className="text-lg font-semibold line-clamp-1">{course.title}</h3>
+                  {course.course_code && (
+                    <div className="mt-1 font-mono text-sm text-primary flex items-center">
+                      <span>Code: {course.course_code}</span>
+                      <Button 
+                        variant="ghost" 
+                        size="icon"
+                        className="h-6 w-6 ml-1"
+                        onClick={() => copyCourseCode(course.course_code)}
+                        title="Copy course code"
+                      >
+                        <Copy className="h-3 w-3" />
+                      </Button>
+                    </div>
+                  )}
                   <div className="flex items-center gap-2 mt-1 text-sm text-muted-foreground">
                     <BookOpen className="h-4 w-4" />
                     <span>{getInstructorName(course.instructor_id)}</span>
@@ -323,7 +347,6 @@ export const CourseManagement = () => {
         </div>
       )}
 
-      {/* Add Course Dialog */}
       <Dialog open={isAddCourseOpen} onOpenChange={setIsAddCourseOpen}>
         <DialogContent className="max-w-md">
           <DialogHeader>
@@ -338,6 +361,30 @@ export const CourseManagement = () => {
                 onChange={(e) => setNewCourse({...newCourse, title: e.target.value})}
                 placeholder="Enter course title"
               />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="course_code">Course Code (for student enrollment)</Label>
+              <div className="flex gap-2">
+                <Input
+                  id="course_code"
+                  value={newCourse.course_code}
+                  onChange={(e) => setNewCourse({...newCourse, course_code: e.target.value})}
+                  placeholder="e.g. CS101, MATH201 or click Generate"
+                  className="flex-1"
+                />
+                <Button 
+                  variant="outline" 
+                  onClick={() => setNewCourse({
+                    ...newCourse, 
+                    course_code: generateCourseCode()
+                  })}
+                >
+                  Generate
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Students will use this code to join your course. A unique code will be generated if left blank.
+              </p>
             </div>
             <div className="space-y-2">
               <Label htmlFor="description">Description</Label>
@@ -396,7 +443,6 @@ export const CourseManagement = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Edit Course Dialog */}
       <Dialog open={isEditCourseOpen} onOpenChange={setIsEditCourseOpen}>
         <DialogContent className="max-w-md">
           <DialogHeader>
@@ -412,6 +458,30 @@ export const CourseManagement = () => {
                   onChange={(e) => setSelectedCourse({...selectedCourse, title: e.target.value})}
                   placeholder="Enter course title"
                 />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-course-code">Course Code (for student enrollment)</Label>
+                <div className="flex gap-2">
+                  <Input
+                    id="edit-course-code"
+                    value={selectedCourse.course_code}
+                    onChange={(e) => setSelectedCourse({...selectedCourse, course_code: e.target.value})}
+                    placeholder="e.g. CS101, MATH201"
+                    className="flex-1"
+                  />
+                  <Button 
+                    variant="outline"
+                    onClick={() => setSelectedCourse({
+                      ...selectedCourse, 
+                      course_code: generateCourseCode()
+                    })}
+                  >
+                    Generate
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Students will use this code to join your course. Make sure to share it with them.
+                </p>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="edit-description">Description</Label>
@@ -471,7 +541,6 @@ export const CourseManagement = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Delete Course Dialog */}
       <Dialog open={isDeleteCourseOpen} onOpenChange={setIsDeleteCourseOpen}>
         <DialogContent>
           <DialogHeader>
@@ -490,3 +559,4 @@ export const CourseManagement = () => {
     </div>
   );
 };
+

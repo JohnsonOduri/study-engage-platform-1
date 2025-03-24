@@ -14,7 +14,8 @@ import { Communications } from "@/components/admin/Communications";
 import { Analytics } from "@/components/admin/Analytics";
 import { Integrations } from "@/components/admin/Integrations";
 import { AiChecker } from "@/components/admin/AiChecker";
-import { LayoutDashboard, Users, BookOpen, FileText, CheckSquare, Settings, MessageSquare, BarChart, Plug, Bot, Sparkles } from "lucide-react";
+import { QuizGenerator } from "@/components/student/QuizGenerator";
+import { LayoutDashboard, Users, BookOpen, FileText, CheckSquare, Settings, MessageSquare, BarChart, Plug, Bot, Sparkles, FileQuestion } from "lucide-react";
 
 const AdminDashboard = () => {
   const { user, isAuthenticated, loading } = useAuth();
@@ -46,7 +47,7 @@ const AdminDashboard = () => {
     return <Navigate to="/login" />;
   }
 
-  if (user?.role !== "admin") {
+  if (user?.role !== "admin" && user?.role !== "teacher") {
     return <Navigate to="/dashboard" />;
   }
 
@@ -55,9 +56,11 @@ const AdminDashboard = () => {
       <Header />
       <main className="flex-1 container py-8">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold mb-2">Admin Dashboard</h1>
+          <h1 className="text-3xl font-bold mb-2">
+            {user?.role === "admin" ? "Admin Dashboard" : "Teacher Dashboard"}
+          </h1>
           <p className="text-muted-foreground">
-            Manage your educational platform and users
+            Manage your educational platform and students
           </p>
         </div>
 
@@ -67,42 +70,62 @@ const AdminDashboard = () => {
               <LayoutDashboard className="h-4 w-4" />
               <span className="hidden md:inline">Overview</span>
             </TabsTrigger>
-            <TabsTrigger value="users" className="flex items-center gap-2">
-              <Users className="h-4 w-4" />
-              <span className="hidden md:inline">Users</span>
-            </TabsTrigger>
+            
+            {user?.role === "admin" && (
+              <TabsTrigger value="users" className="flex items-center gap-2">
+                <Users className="h-4 w-4" />
+                <span className="hidden md:inline">Users</span>
+              </TabsTrigger>
+            )}
+            
             <TabsTrigger value="courses" className="flex items-center gap-2">
               <BookOpen className="h-4 w-4" />
               <span className="hidden md:inline">Courses</span>
             </TabsTrigger>
+            
             <TabsTrigger value="content" className="flex items-center gap-2">
               <FileText className="h-4 w-4" />
               <span className="hidden md:inline">Content</span>
             </TabsTrigger>
+            
             <TabsTrigger value="assignments" className="flex items-center gap-2">
               <CheckSquare className="h-4 w-4" />
               <span className="hidden md:inline">Assignments</span>
             </TabsTrigger>
-            <TabsTrigger value="settings" className="flex items-center gap-2">
-              <Settings className="h-4 w-4" />
-              <span className="hidden md:inline">Settings</span>
+
+            <TabsTrigger value="quizzes" className="flex items-center gap-2 bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300">
+              <FileQuestion className="h-4 w-4" />
+              <span className="hidden md:inline">Quiz Generator</span>
             </TabsTrigger>
-            <TabsTrigger value="communications" className="flex items-center gap-2">
-              <MessageSquare className="h-4 w-4" />
-              <span className="hidden md:inline">Communications</span>
-            </TabsTrigger>
-            <TabsTrigger value="analytics" className="flex items-center gap-2">
-              <BarChart className="h-4 w-4" />
-              <span className="hidden md:inline">Analytics</span>
-            </TabsTrigger>
-            <TabsTrigger value="integrations" className="flex items-center gap-2">
-              <Plug className="h-4 w-4" />
-              <span className="hidden md:inline">Integrations</span>
-            </TabsTrigger>
-            <TabsTrigger value="ai-checker" className="flex items-center gap-2 bg-purple-100 dark:bg-purple-900/30 text-purple-800 dark:text-purple-300">
-              <Bot className="h-4 w-4" />
-              <span className="hidden md:inline">AI Checker</span>
-            </TabsTrigger>
+            
+            {user?.role === "admin" && (
+              <>
+                <TabsTrigger value="settings" className="flex items-center gap-2">
+                  <Settings className="h-4 w-4" />
+                  <span className="hidden md:inline">Settings</span>
+                </TabsTrigger>
+                
+                <TabsTrigger value="communications" className="flex items-center gap-2">
+                  <MessageSquare className="h-4 w-4" />
+                  <span className="hidden md:inline">Communications</span>
+                </TabsTrigger>
+                
+                <TabsTrigger value="analytics" className="flex items-center gap-2">
+                  <BarChart className="h-4 w-4" />
+                  <span className="hidden md:inline">Analytics</span>
+                </TabsTrigger>
+                
+                <TabsTrigger value="integrations" className="flex items-center gap-2">
+                  <Plug className="h-4 w-4" />
+                  <span className="hidden md:inline">Integrations</span>
+                </TabsTrigger>
+                
+                <TabsTrigger value="ai-checker" className="flex items-center gap-2 bg-purple-100 dark:bg-purple-900/30 text-purple-800 dark:text-purple-300">
+                  <Bot className="h-4 w-4" />
+                  <span className="hidden md:inline">AI Checker</span>
+                </TabsTrigger>
+              </>
+            )}
           </TabsList>
 
           <TabsContent value="overview" className="space-y-4">
@@ -155,34 +178,38 @@ const AdminDashboard = () => {
               <div className="bg-card p-6 rounded-lg border border-border shadow-subtle">
                 <h2 className="text-xl font-bold mb-4">Quick Actions</h2>
                 <div className="grid grid-cols-2 gap-4">
-                  <QuickActionButton
-                    title="Add User"
-                    icon={<Users className="h-5 w-5" />}
-                    onClick={() => setActiveTab("users")}
-                  />
+                  {user?.role === "admin" && (
+                    <QuickActionButton
+                      title="Add User"
+                      icon={<Users className="h-5 w-5" />}
+                      onClick={() => setActiveTab("users")}
+                    />
+                  )}
                   <QuickActionButton
                     title="Create Course"
                     icon={<BookOpen className="h-5 w-5" />}
                     onClick={() => setActiveTab("courses")}
                   />
                   <QuickActionButton
-                    title="Send Notification"
-                    icon={<MessageSquare className="h-5 w-5" />}
-                    onClick={() => setActiveTab("communications")}
+                    title="Manage Assignments"
+                    icon={<CheckSquare className="h-5 w-5" />}
+                    onClick={() => setActiveTab("assignments")}
                   />
                   <QuickActionButton
-                    title="View Reports"
-                    icon={<BarChart className="h-5 w-5" />}
-                    onClick={() => setActiveTab("analytics")}
+                    title="Generate Quiz"
+                    icon={<FileQuestion className="h-5 w-5" />}
+                    onClick={() => setActiveTab("quizzes")}
                   />
                 </div>
               </div>
             </div>
           </TabsContent>
 
-          <TabsContent value="users">
-            <UserManagement />
-          </TabsContent>
+          {user?.role === "admin" && (
+            <TabsContent value="users">
+              <UserManagement />
+            </TabsContent>
+          )}
           
           <TabsContent value="courses">
             <CourseManagement />
@@ -195,26 +222,34 @@ const AdminDashboard = () => {
           <TabsContent value="assignments">
             <AssignmentManagement />
           </TabsContent>
-          
-          <TabsContent value="settings">
-            <SystemSettings />
-          </TabsContent>
-          
-          <TabsContent value="communications">
-            <Communications />
-          </TabsContent>
-          
-          <TabsContent value="analytics">
-            <Analytics />
-          </TabsContent>
-          
-          <TabsContent value="integrations">
-            <Integrations />
-          </TabsContent>
 
-          <TabsContent value="ai-checker">
-            <AiChecker />
+          <TabsContent value="quizzes">
+            <QuizGenerator isTeacher={true} />
           </TabsContent>
+          
+          {user?.role === "admin" && (
+            <>
+              <TabsContent value="settings">
+                <SystemSettings />
+              </TabsContent>
+              
+              <TabsContent value="communications">
+                <Communications />
+              </TabsContent>
+              
+              <TabsContent value="analytics">
+                <Analytics />
+              </TabsContent>
+              
+              <TabsContent value="integrations">
+                <Integrations />
+              </TabsContent>
+
+              <TabsContent value="ai-checker">
+                <AiChecker />
+              </TabsContent>
+            </>
+          )}
         </Tabs>
       </main>
       <Footer />
