@@ -1,54 +1,52 @@
 
 import React, { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { toast } from "sonner";
-import { Loader2, Plus } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
+import { Loader2, BookOpen, Calendar, Clock, Play, FileText } from "lucide-react";
 import { ref, get, query, orderByChild, equalTo } from "firebase/database";
 import { database } from "@/firebase";
-import { CourseGrid } from "./CourseGrid";
-import { JoinCourseDialog } from "./JoinCourseDialog";
-import { CourseDetailView } from "./CourseDetailView";
+import { toast } from "sonner";
+import { useNavigate } from "react-router-dom";
 
 export const MyCourses = () => {
   const { user } = useAuth();
-  const [enrollments, setEnrollments] = useState<any[]>([]);
+  const [enrollments, setEnrollments] = useState([]);
+  const [courseAssignments, setCourseAssignments] = useState({});
   const [isLoading, setIsLoading] = useState(true);
-  const [showJoinDialog, setShowJoinDialog] = useState(false);
-  const [selectedCourse, setSelectedCourse] = useState<any>(null);
-  const [courseAssignments, setCourseAssignments] = useState<any[]>([]);
-  const [courseAttendance, setCourseAttendance] = useState<any[]>([]);
+  const navigate = useNavigate();
   
   useEffect(() => {
-    const fetchData = async () => {
+    const fetchEnrollments = async () => {
       if (!user?.id) {
         setIsLoading(false);
         return;
       }
       
       try {
-        setIsLoading(true);
-        
-        // Get enrollments
+        // Get enrollments from Firebase
         const enrollmentsRef = query(
           ref(database, 'enrollments'),
-          orderByChild('student_id'),
+          orderByChild('user_id'),
           equalTo(user.id)
         );
         
-        const enrollmentsSnapshot = await get(enrollmentsRef);
-        
-        const enrollmentData: any[] = [];
-        
-        if (enrollmentsSnapshot.exists()) {
-          enrollmentsSnapshot.forEach((childSnapshot) => {
-            const data = childSnapshot.val();
-            enrollmentData.push({
-              id: childSnapshot.key,
-              ...data
-            });
-          });
+        const snapshot = await get(enrollmentsRef);
+        if (!snapshot.exists()) {
+          setEnrollments([]);
+          setIsLoading(false);
+          return;
         }
+        
+        const enrollmentData = [];
+        snapshot.forEach((childSnapshot) => {
+          enrollmentData.push({
+            id: childSnapshot.key,
+            ...childSnapshot.val()
+          });
+        });
         
         // Fetch course details for each enrollment
         const enrollmentsWithCourses = await Promise.all(
@@ -57,24 +55,9 @@ export const MyCourses = () => {
             const courseSnapshot = await get(courseRef);
             
             if (courseSnapshot.exists()) {
-              const courseData = courseSnapshot.val();
-              // Get instructor info
-              let instructorName = "Unknown Instructor";
-              if (courseData.instructor_id) {
-                const instructorRef = ref(database, `users/${courseData.instructor_id}`);
-                const instructorSnapshot = await get(instructorRef);
-                if (instructorSnapshot.exists()) {
-                  instructorName = instructorSnapshot.val().name || "Unknown Instructor";
-                }
-              }
-              
               return {
                 ...enrollment,
-                course: {
-                  id: enrollment.course_id,
-                  ...courseData,
-                  instructor_name: instructorName
-                }
+                courses: courseSnapshot.val()
               };
             }
             return enrollment;
@@ -82,99 +65,96 @@ export const MyCourses = () => {
         );
         
         setEnrollments(enrollmentsWithCourses);
+        
+        // Get assignment counts for each course
+        const assignmentCounts = {};
+        for (const enrollment of enrollmentsWithCourses) {
+          if (enrollment.course_id) {
+            // Get assignments for this course
+            const assignmentsRef = query(
+              ref(database, 'assignments'),
+              orderByChild('course_id'),
+              equalTo(enrollment.course_id)
+            );
+            
+            const assignmentSnapshot = await get(assignmentsRef);
+            let assignmentCount = 0;
+            let pendingAssignments = 0;
+            
+            if (assignmentSnapshot.exists()) {
+              // Count assignments and check which ones are pending for this user
+              assignmentSnapshot.forEach((assignmentChild) => {
+                assignmentCount++;
+                
+                // Check if user has a submission for this assignment
+                const submissionRef = query(
+                  ref(database, 'submissions'),
+                  orderByChild('assignment_id'),
+                  equalTo(assignmentChild.key)
+                );
+                
+                // We'll handle this asynchronously below
+              });
+              
+              // Now check for pending assignments (those without submissions)
+              const submissionsPromises = [];
+              assignmentSnapshot.forEach((assignmentChild) => {
+                const checkSubmission = async () => {
+                  const submissionRef = query(
+                    ref(database, 'submissions'),
+                    orderByChild('assignment_id'),
+                    equalTo(assignmentChild.key)
+                  );
+                  
+                  const submissionSnapshot = await get(submissionRef);
+                  let hasUserSubmission = false;
+                  
+                  if (submissionSnapshot.exists()) {
+                    submissionSnapshot.forEach((submissionChild) => {
+                      if (submissionChild.val().user_id === user.id) {
+                        hasUserSubmission = true;
+                      }
+                    });
+                  }
+                  
+                  if (!hasUserSubmission) {
+                    return true; // This is a pending assignment
+                  }
+                  return false;
+                };
+                submissionsPromises.push(checkSubmission());
+              });
+              
+              const pendingResults = await Promise.all(submissionsPromises);
+              pendingAssignments = pendingResults.filter(Boolean).length;
+            }
+            
+            // Store the counts
+            assignmentCounts[enrollment.course_id] = {
+              total: assignmentCount,
+              pending: pendingAssignments
+            };
+          }
+        }
+        
+        setCourseAssignments(assignmentCounts);
       } catch (error) {
-        console.error("Error fetching courses:", error);
-        toast.error("Failed to load courses");
+        console.error("Error fetching enrollments:", error);
+        toast.error("Failed to load course data. Please try again.");
       } finally {
         setIsLoading(false);
       }
     };
     
-    fetchData();
+    fetchEnrollments();
   }, [user?.id]);
 
-  const handleCourseSelect = async (enrollment: any) => {
-    setSelectedCourse(enrollment);
-    
-    // Fetch assignments for this course
-    try {
-      const assignmentsRef = query(
-        ref(database, 'assignments'),
-        orderByChild('course_id'),
-        equalTo(enrollment.course.id)
-      );
-      
-      const assignmentsSnapshot = await get(assignmentsRef);
-      const assignmentsData: any[] = [];
-      
-      if (assignmentsSnapshot.exists()) {
-        assignmentsSnapshot.forEach((childSnapshot) => {
-          assignmentsData.push({
-            id: childSnapshot.key,
-            ...childSnapshot.val()
-          });
-        });
-      }
-      
-      // Get submissions for each assignment
-      const submissionsRef = query(
-        ref(database, 'submissions'),
-        orderByChild('user_id'),
-        equalTo(user?.id)
-      );
-      
-      const submissionsSnapshot = await get(submissionsRef);
-      const submissions: any[] = [];
-      
-      if (submissionsSnapshot.exists()) {
-        submissionsSnapshot.forEach((childSnapshot) => {
-          submissions.push({
-            id: childSnapshot.key,
-            ...childSnapshot.val()
-          });
-        });
-      }
-      
-      // Attach submissions to assignments
-      const assignmentsWithSubmissions = assignmentsData.map(assignment => {
-        const submission = submissions.find(s => s.assignment_id === assignment.id);
-        return {
-          ...assignment,
-          submitted: !!submission,
-          submission: submission || null
-        };
-      });
-      
-      setCourseAssignments(assignmentsWithSubmissions);
-      
-      // Fetch attendance for this course
-      const attendanceRef = query(
-        ref(database, 'attendance'),
-        orderByChild('student_id'),
-        equalTo(user?.id)
-      );
-      
-      const attendanceSnapshot = await get(attendanceRef);
-      const attendanceData: any[] = [];
-      
-      if (attendanceSnapshot.exists()) {
-        attendanceSnapshot.forEach((childSnapshot) => {
-          const data = childSnapshot.val();
-          if (data.course_id === enrollment.course.id) {
-            attendanceData.push({
-              id: childSnapshot.key,
-              ...data
-            });
-          }
-        });
-      }
-      
-      setCourseAttendance(attendanceData);
-      
-    } catch (error) {
-      console.error("Error fetching course details:", error);
-      toast.error("Failed to load course details");
-    }
+  const handleBrowseCourses = () => {
+    navigate("/courses");
+  };
+
+  const handleViewAssignments = () => {
+    navigate("/student", { state: { defaultTab: "assignments" } });
   };
 
   if (isLoading) {
@@ -185,41 +165,115 @@ export const MyCourses = () => {
     );
   }
 
-  if (selectedCourse) {
+  if (!enrollments || enrollments.length === 0) {
     return (
-      <CourseDetailView
-        selectedCourse={selectedCourse}
-        courseAssignments={courseAssignments}
-        courseAttendance={courseAttendance}
-        onBack={() => setSelectedCourse(null)}
-        onAssignmentsChange={setCourseAssignments}
-      />
+      <div className="text-center py-12">
+        <BookOpen className="h-12 w-12 mx-auto text-muted-foreground" />
+        <h3 className="mt-4 text-lg font-medium">No Courses Found</h3>
+        <p className="mt-2 text-muted-foreground">
+          You are not enrolled in any courses yet.
+        </p>
+        <Button className="mt-4" onClick={handleBrowseCourses}>Browse Courses</Button>
+      </div>
     );
   }
 
   return (
-    <div className="space-y-8">
-      {/* My Enrolled Courses Section */}
-      <div className="space-y-6">
-        <div className="flex justify-between items-center">
-          <h2 className="text-2xl font-bold">My Courses</h2>
-          <Button onClick={() => setShowJoinDialog(true)}>
-            <Plus className="h-4 w-4 mr-2" />
-            Join Course
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <h2 className="text-2xl font-bold">My Courses</h2>
+        <div className="space-x-2">
+          <Button variant="outline" onClick={handleViewAssignments}>
+            <FileText className="h-4 w-4 mr-2" />
+            View All Assignments
           </Button>
+          <Button onClick={handleBrowseCourses}>Browse More Courses</Button>
         </div>
-        
-        <CourseGrid 
-          enrollments={enrollments} 
-          onCourseSelect={handleCourseSelect} 
-        />
       </div>
       
-      {/* Join Course Dialog */}
-      <JoinCourseDialog 
-        open={showJoinDialog} 
-        onOpenChange={setShowJoinDialog} 
-      />
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {enrollments.map((enrollment) => (
+          <CourseCard 
+            key={enrollment.id} 
+            enrollment={enrollment} 
+            assignmentInfo={courseAssignments[enrollment.course_id] || { total: 0, pending: 0 }}
+          />
+        ))}
+      </div>
     </div>
+  );
+};
+
+const CourseCard = ({ enrollment, assignmentInfo }: { enrollment: any, assignmentInfo: { total: number, pending: number } }) => {
+  const course = enrollment.courses;
+  const navigate = useNavigate();
+  
+  // Calculate a mock progress percentage between 0-100
+  const progressPercentage = enrollment.completed ? 100 : Math.floor(Math.random() * 100);
+  
+  const handleViewAssignments = () => {
+    navigate("/student", { state: { defaultTab: "assignments" } });
+  };
+
+  const handleContinueLearning = () => {
+    // We can implement course-specific navigation in the future
+    navigate("/student", { state: { defaultTab: "courses" } });
+    toast.info(`Continue learning ${course.title}`);
+  };
+
+  return (
+    <Card className="overflow-hidden">
+      <CardContent className="p-0">
+        <div className="relative h-40 bg-gradient-to-r from-blue-500 to-purple-500">
+          <div className="absolute inset-0 flex items-center justify-center">
+            <BookOpen className="h-16 w-16 text-white opacity-25" />
+          </div>
+          <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/70 to-transparent">
+            <Badge className="mb-2">{course.category || 'General'}</Badge>
+            <h3 className="text-lg font-semibold text-white truncate">{course.title}</h3>
+          </div>
+        </div>
+        
+        <div className="p-4">
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center space-x-2">
+              <Calendar className="h-4 w-4 text-muted-foreground" />
+              <span className="text-sm text-muted-foreground">Started {new Date(enrollment.enrolled_at).toLocaleDateString()}</span>
+            </div>
+            <div className="flex items-center space-x-2">
+              <FileText className="h-4 w-4 text-muted-foreground" />
+              <span className="text-sm text-muted-foreground">
+                {assignmentInfo.total} assignment{assignmentInfo.total !== 1 ? 's' : ''}
+                {assignmentInfo.pending > 0 && <span className="text-amber-500 ml-1">({assignmentInfo.pending} pending)</span>}
+              </span>
+            </div>
+          </div>
+          
+          <div className="mt-4">
+            <div className="flex justify-between mb-1 text-sm">
+              <span>Progress</span>
+              <span>{progressPercentage}%</span>
+            </div>
+            <Progress value={progressPercentage} className="h-2" />
+          </div>
+          
+          <div className="flex gap-2 mt-4">
+            <Button className="flex-1 gap-2" onClick={handleContinueLearning}>
+              <Play className="h-4 w-4" />
+              {progressPercentage === 0 ? 'Start Course' : 
+              progressPercentage === 100 ? 'Review Course' : 'Continue Learning'}
+            </Button>
+            
+            <Button 
+              variant="outline" 
+              className="flex-[0.6]"
+              onClick={handleViewAssignments}
+            >
+              <FileText className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
   );
 };

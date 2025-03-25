@@ -6,7 +6,6 @@ export interface User {
   email?: string; // Make email optional to handle profiles without email
   role: UserRole;
   avatar?: string;
-  accessCode?: string; // Added for teacher-student connections
 }
 
 export interface Course {
@@ -16,6 +15,7 @@ export interface Course {
   instructor_id: string;
   instructor?: string;
   category?: string;
+  course_code?: string; // Added course code field
   prerequisites?: string[];
   startDate?: string;
   endDate?: string;
@@ -55,6 +55,10 @@ export interface Assignment {
   description?: string;
   due_date?: string;
   points: number;
+  programming_language?: "java" | "c" | "cpp" | "javascript" | "python" | "csharp" | "other" | null;
+  code_template?: string;
+  expected_output?: string;
+  assignment_type?: "written" | "programming" | "project" | "quiz" | "other";
   created_at: string;
 }
 
@@ -80,8 +84,6 @@ export interface Notification {
 
 export interface AttendanceRecord {
   id: string;
-  student_id: string;
-  teacher_id?: string;
   courseId: string;
   date: string;
   status: "present" | "absent" | "late";
@@ -98,6 +100,7 @@ export interface Message {
   read: boolean;
 }
 
+// New interfaces for gamification features
 export interface UserBadge {
   id: string;
   user_id: string;
@@ -166,13 +169,4 @@ export interface AIContentCheck {
   analysis_results: string[];
   checked_at: string;
   checked_by: string;
-}
-
-export interface TeacherConnection {
-  id: string;
-  teacher_id: string;
-  student_id: string;
-  access_code: string;
-  connected_at: string;
-  status: "active" | "inactive" | "pending";
 }
